@@ -14,6 +14,7 @@ import { ProfanityModule } from './modules/profanity/profanity.module';
 import { IsNotProfanityConstraint } from './validators/IsNotProfanity.validator';
 import adminJsConfig from './adminJsConfig';
 import { APP_GUARD } from '@nestjs/core';
+import { CategoriesModule } from './modules/categories/categories.module';
 
 
 
@@ -39,6 +40,7 @@ import { APP_GUARD } from '@nestjs/core';
     AuthModule,
     MailModule,
     ProfanityModule,
+    CategoriesModule,
   ],
   controllers: [AppController],
   providers: [AppService, IsUniqueConstraint, IsExistsConstraint, IsNotProfanityConstraint],
