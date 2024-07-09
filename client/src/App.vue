@@ -1,0 +1,216 @@
+<template>
+    <Transition name="fade" appear><Header /></Transition>
+    <Transition name="fade" appear>
+    <div class="main">
+      <div class="ads ads1"></div>
+      <div class="page-body">
+        <div class="container">
+          <div class="loading-animation-overlay" v-if="isShowLoadingMessage">
+            <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+          </div>
+          <router-view v-slot="{ Component, route }">
+            <Transition name="fade-faster" mode="out-in">
+              <component :is="Component" :key="route.name"></component>
+            </Transition> 
+          </router-view>
+        </div>
+      </div>
+      <div class="ads ads2"></div>
+    </div>
+    </Transition>
+
+    <Transition name="fade" appear><Footer /></Transition>
+</template>
+
+<script>
+import Header from './components/infra/Header.vue';
+import Footer from './components/infra/Footer.vue';
+
+import { mapGetters, mapActions, mapMutations } from 'vuex';
+import messagesMixin from '@/mixins/messages.mixin';
+import UserService from '@/services/UserService';
+
+
+export default {
+  name: 'App',
+  mixins: [messagesMixin],
+  components: {
+    Header, Footer
+  },
+  computed: {
+    ...mapGetters(['messages', 'isShowLoadingMessage']),
+  },
+  methods: {
+    ...mapActions(['loginAndSaveUserIfHasToken', 'showLoadingMessage', 'hideLoadingMessage', 'addSuccessMessage', 'addErrorMessage']),
+    ...mapMutations(['setIsGoogleAuthLoaded']),
+    showMessageIfNeeded() {
+      let urlParams = new URLSearchParams(window.location.search);
+      let message = urlParams.get('showMessage');
+
+      if (message) {
+        let type = urlParams.get('type');
+
+        if (type == 'error') {
+          this.addErrorMessage(message);
+        } else if (type == 'success') {
+          this.addSuccessMessage(message);
+        } else {
+          this.addInfoMessage(message);
+        }
+
+        this.$router.push({ name: this.$router.currentRoute.name });
+      }
+    },
+    loadGoogleAuth() {
+      
+      var head = document.getElementsByTagName('head')[0];
+      var js = document.createElement("script");
+
+      js.type = "text/javascript";
+      js.src = "https://accounts.google.com/gsi/client";
+      head.appendChild(js);
+
+      js.onload = () => {
+          window.google.accounts.id.initialize({
+            client_id: '838033830312-h0eii6g1pfrtccf1hi254fm1ha5gh3uo.apps.googleusercontent.com',
+            context: "use",
+            callback: async (cred) => {
+              this.showLoadingMessage();
+
+              try {
+                let result = await UserService.loginWithGoogle(cred.credential);
+                if (result.success) {
+                  this.hideLoadingMessage();
+                  this.addSuccessMessage("You have successfully logged in.");
+                  this.$router.push('/');
+                } else {
+                  throw new Error(result);
+                }
+              } catch (err) {
+                console.error(err);
+                this.addErrorMessage("There was an error. Please try again. If the problem persists, please contact us.")
+                this.hideLoadingMessage();
+              }
+              
+
+              },
+          });
+
+        this.setIsGoogleAuthLoaded();
+      };
+    },
+  },
+  mounted() {
+    Window.hideFirstLoader();
+    this.showMessageIfNeeded();
+    this.loginAndSaveUserIfHasToken().then(isLoggedIn => {
+      if (!isLoggedIn) {
+        this.loadGoogleAuth();
+      }
+    }).catch(err => {
+      console.info('Token expired', err);
+      this.loadGoogleAuth();
+    });
+  },
+}
+</script>
+
+<style>
+
+
+#app {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  width: 100%;
+  max-width: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.main {
+  padding: 20px;
+  text-align: center;
+  display: grid;
+  grid-template-columns: 20% auto 20%;
+}
+
+.container {
+  background-color: rgba(0, 0, 0, 1);
+  border-radius: 20px;
+  padding: 20px;
+  display: inline-block;
+  position: relative;
+}
+
+.loading-animation-overlay {
+  border-radius: 20px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 10;
+}
+
+.loading-animation-overlay > div {
+  transform: scale(0.5);
+}
+
+.fade-enter-active,
+.fade-leave-active
+{
+  transition: opacity 0.5s ease-in-out;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.fade-faster-enter-active
+{
+  transition: opacity 0.2s ease-in-out;
+}
+
+.fade-faster-leave-active {
+  transition: opacity 0.1s ease-in-out;
+}
+
+.fade-faster-enter-from,
+.fade-faster-leave-to {
+  opacity: 0;
+}
+
+@media (max-width:480px)  {
+  .main {
+    grid-template-columns: 1fr;
+  }
+
+  .container {
+    display: block;
+  }
+
+  .ads {
+    display: none;
+  }
+
+  .input-size {
+    width: 100%;
+  }
+
+  .el-form {
+    width: 100%;
+  }
+}
+
+
+
+</style>
+
