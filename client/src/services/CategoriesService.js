@@ -10,14 +10,14 @@ export default class CategoriesService {
 
 
     static async loadCategories() {
-        store.dispatch('showLoadingMessage');
+        store.commit('showMenuLoadingMessage');
         try {
             const categories = await CategoriesService.findAll();
             store.commit('setCategories', categories);    
         } catch (error) {
             store.dispatch('addErrorMessage', 'Failed to load categories');
         } finally {
-            store.dispatch('hideLoadingMessage');
+            store.commit('hideMenuLoadingMessage');
         }
     }
 }

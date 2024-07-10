@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Post, Request, Response, UseGuards } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CategoryGuard } from './guards/category.guard';
@@ -15,14 +15,26 @@ export class CategoriesController {
 
   @UseGuards(CategoryGuard)
   @Get(':id/:imageIndex')
-  async getImage(@Request() req, @Param('imageIndex') imageIndex: number) {
-    return await this.categoriesService.getImageByIndex(req.category, imageIndex);
+  async getImage(@Request() req, @Response() response, @Param('imageIndex') imageIndex: number) {
+    let image = await this.categoriesService.getImageByIndex(req.category, imageIndex);
+
+    if (image) {
+      return response.status(200).send(image)
+    }
+
+    return response.status(204).send({});
   }
 
   @UseGuards(CategoryGuard)
   @Get(':id/:imageName')
-  async getImageByName(@Request() req, @Param('imageName') imageName: string) {
-    return await this.categoriesService.getImageByName(req.category, imageName);
+  async getImageByName(@Request() req, @Response() response, @Param('imageName') imageName: string) {
+    let image = await this.categoriesService.getImageByName(req.category, imageName);
+
+    if (image) {
+      return response.status(200).send(image)
+    }
+
+    return response.status(204).send({});
   }
 
   @UseGuards(CategoryGuard)

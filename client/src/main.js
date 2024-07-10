@@ -5,6 +5,8 @@ import 'element-plus/dist/index.css'
 import store from './store'
 import router from './router'
 import axios from 'axios'
+import 'vue-advanced-cropper/dist/style.css';
+
 
 
 

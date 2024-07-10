@@ -6,6 +6,7 @@ import ForgotPassword from '@/components/userManagement/ForgotPassword.vue';
 import ResetPassword from '@/components/userManagement/ResetPassword.vue';
 import Profile from '@/components/userManagement/Profile.vue';
 import UpdatePassword from '@/components/userManagement/UpdatePassword.vue';
+import ImageViewer from '@/components/images/ImageViewer.vue';
 
 const routes = [
   {
@@ -42,6 +43,12 @@ const routes = [
     path: '/profile',
     name: 'Profile',
     component: Profile,
+  },
+  {
+    path: '/category/:id',
+    name: 'Category Viewer',
+    component: ImageViewer,
+    meta: { fullPage: true }
   },
 ];
 

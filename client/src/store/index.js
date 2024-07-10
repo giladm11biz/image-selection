@@ -6,6 +6,8 @@ export default createStore({
   state() {
     return {
       showLoadingMessage: false,
+      showMenuLoadingMessage: false,
+      loadingMessageText: null,
       userData: null,
       isAuthenticating: false,
       isGoogleAuthLoaded: false,
@@ -15,21 +17,25 @@ export default createStore({
   getters: {
     isAuthenticated: state => state.userData != null,
     isShowLoadingMessage: state => state.showLoadingMessage,
+    loadingMessageText: state => state.loadingMessageText,
     isAuthenticating: state => state.isAuthenticating,
     userDisplayFirstName: state => state.userData.name.split(' ')[0],
     userData: state => state.userData,
     isGoogleAuthLoaded: state => state.isGoogleAuthLoaded,
     categories: state => state.categories,
+    showMenuLoadingMessage: state => state.showMenuLoadingMessage
   },
   mutations: {
     setAuthenticated(state, value) {
       state.isAuthenticated = value
     },
-    showLoadingMessage(state) {
+    showLoadingMessage(state, value = null) {
       state.showLoadingMessage = true;
+      state.loadingMessageText = value;
     },
     hideLoadingMessage(state) {
       state.showLoadingMessage = false;
+      state.loadingMessageText = null;
     },
     addMessage(state, message) {
       state.messages.push(message);
@@ -43,6 +49,12 @@ export default createStore({
     setIsGoogleAuthLoaded(state) {
       state.isGoogleAuthLoaded = true;
     },
+    showMenuLoadingMessage(state) {
+      state.showMenuLoadingMessage = true;
+    },
+    hideMenuLoadingMessage(state) {
+      state.showMenuLoadingMessage = false;
+    },
     setCategories(state, categories) {
       state.categories = categories;
     },
@@ -54,8 +66,8 @@ export default createStore({
     toggleLoadingMessage({ commit }, value) {
       commit('toggleLoadingMessage', value)
     },
-    showLoadingMessage({ commit }) {
-      commit('showLoadingMessage')
+    showLoadingMessage({ commit }, value = null) {
+      commit('showLoadingMessage', value)
     },
     hideLoadingMessage({ commit }) {
       commit('hideLoadingMessage')

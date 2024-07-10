@@ -16,6 +16,7 @@
     "install": "^0.13.0",
     "npm": "^10.7.0",
     "vue": "^3.2.13",
+    "vue-advanced-cropper": "^2.8.9",
     "vue-router": "^4.3.2",
     "vuex": "^4.0.2"
   },

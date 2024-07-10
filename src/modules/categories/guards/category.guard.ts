@@ -11,7 +11,7 @@ import _ from 'lodash';
   
   @Injectable()
   export class CategoryGuard implements CanActivate {
-    constructor(private readonly categoryService: CategoriesService) {}
+    constructor(private readonly categoryService: CategoriesService, ) {}
   
     async canActivate(context: ExecutionContext): Promise<boolean> {
       const request = context.switchToHttp().getRequest();
@@ -29,6 +29,9 @@ import _ from 'lodash';
       if (!categories[0]) {
         throw new UnauthorizedException();
       }
+
+
+      console.log("ADD AUTHORIZED PATH");
 
       request['category'] = categories[0];
 

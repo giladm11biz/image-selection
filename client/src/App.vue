@@ -1,12 +1,12 @@
 <template>
     <Transition name="fade" appear><Header /></Transition>
     <Transition name="fade" appear>
-    <div class="main">
-      <div class="ads ads1"></div>
+    <div class="main"  :class="{ 'full-page': showFullPage }">
       <div class="page-body">
         <div class="container">
           <div class="loading-animation-overlay" v-if="isShowLoadingMessage">
             <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+            <div v-if="loadingMessageText" class="loading-message-text">{{ loadingMessageText }}</div>
           </div>
           <router-view v-slot="{ Component, route }">
             <Transition name="fade-faster" mode="out-in">
@@ -15,16 +15,12 @@
           </router-view>
         </div>
       </div>
-      <div class="ads ads2"></div>
     </div>
     </Transition>
-
-    <Transition name="fade" appear><Footer /></Transition>
 </template>
 
 <script>
 import Header from './components/infra/Header.vue';
-import Footer from './components/infra/Footer.vue';
 
 import { mapGetters, mapActions, mapMutations } from 'vuex';
 import messagesMixin from '@/mixins/messages.mixin';
@@ -36,10 +32,13 @@ export default {
   name: 'App',
   mixins: [messagesMixin],
   components: {
-    Header, Footer
+    Header
   },
   computed: {
-    ...mapGetters(['messages', 'isShowLoadingMessage']),
+    ...mapGetters(['messages', 'isShowLoadingMessage', 'loadingMessageText']),
+    showFullPage() {
+      return this.$route.meta && this.$route.meta.fullPage;
+    }
   },
   methods: {
     ...mapActions(['loginAndSaveUserIfHasToken', 'showLoadingMessage', 'hideLoadingMessage', 'addSuccessMessage', 'addErrorMessage']),
@@ -132,13 +131,16 @@ export default {
   grid-template-rows: auto 1fr auto;
   min-height: 100vh;
   min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .main {
   padding: 20px;
   text-align: center;
   display: grid;
-  grid-template-columns: 20% auto 20%;
+  grid-template-columns: 100%;
 }
 
 .container {
@@ -149,6 +151,29 @@ export default {
   position: relative;
 }
 
+.loading-message-text {
+  font-size: var(--title-text-size);
+  font-weight: bold;
+}
+
+.main.full-page {
+  padding: 0;
+  overflow: hidden;
+}
+
+.main.full-page .page-body {
+  display: flex;
+  overflow: hidden;
+}
+
+.main.full-page .container {
+  padding: 0;
+  border-radius: 0;
+  width: 100%;
+  border-top: 2px solid white;
+  display: flex;
+}
+
 .loading-animation-overlay {
   border-radius: 20px;
   position: absolute;
@@ -157,6 +182,7 @@ export default {
   width: 100%;
   height: 100%;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   background-color: rgba(0, 0, 0, 0.8);

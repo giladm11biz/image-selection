@@ -11,6 +11,7 @@
             <div class="icon-button-border" @click="closeSidebar"><XMarkIcon /></div>
           </div>
           <div class="menu-links">
+            <div v-if="showMenuLoadingMessage" class="menu-loading">Loading...</div>
             <div v-for="route in mobileRoutes" :key="route.path" class="menu-link"><router-link active-class="selected" :to="route.path" @click="closeSidebar">{{ route.text }}</router-link></div>
           </div>
           <div class="menu-links bottom">
@@ -24,6 +25,7 @@
     <nav>
         <div class="hide-on-mobile hide-on-tablet">
           <div class="site-links links">
+            <div v-if="showMenuLoadingMessage" class="menu-loading">Loading...</div>
             <div v-for="route in desktopRoutes" :key="route.path"><router-link active-class="selected" :to="route.path">{{ route.text }}</router-link></div>
           </div>
         </div>
@@ -63,7 +65,7 @@ export default {
     }
   },
   computed: {
-    ...mapGetters(['isAuthenticated', 'isAuthenticating', 'userDisplayFirstName', 'categories']),
+    ...mapGetters(['isAuthenticated', 'isAuthenticating', 'userDisplayFirstName', 'categories', 'showMenuLoadingMessage']),
     mobileRoutes() {
       let routes = this.categoriesRoutes;
       
