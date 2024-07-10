@@ -1,5 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, BaseEntity } from 'typeorm';
-@Entity('users')
+import _ from 'lodash';
+@Entity('categories')
 export class Category extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
@@ -14,7 +15,7 @@ export class Category extends BaseEntity {
   sourcePath: string;
 
   @Column()
-  destenationPath: string;
+  destinationPath: string;
 
   @Column({ type: 'timestamp' })
   createdAt: Date;
@@ -24,11 +25,9 @@ export class Category extends BaseEntity {
 
   getClientData() {
     return _.pick(this, [
+      'id',
       'name',
-      'email',
       'description',
-      'mailUpdates',
-      'createdAt',
     ]);
   }
 }

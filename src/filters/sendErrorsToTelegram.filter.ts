@@ -16,6 +16,8 @@ export class SendErrorsToTelegramFilter implements ExceptionFilter {
     if (shouldSendExeption) {
       console.error(exception);
       this.telegramService.sendErrorToAdminGroupWithoutExceptionOnFail(exception);
+    } else if (process.env.NODE_ENV == 'development') {
+      console.error(exception);
     }
 
     const httpStatus =

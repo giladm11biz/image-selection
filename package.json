@@ -1,5 +1,5 @@
 {
-  "name": "diffpuzzles",
+  "name": "image-selection",
   "version": "0.0.1",
   "description": "",
   "author": "",
@@ -56,6 +56,7 @@
     "nodemailer": "^6.9.13",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
+    "sharp": "^0.33.4",
     "typeorm": "^0.3.20"
   },
   "devDependencies": {

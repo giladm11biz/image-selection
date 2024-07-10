@@ -48,7 +48,7 @@
 <script>
 import UserService from '@/services/UserService';
 import { mapGetters } from 'vuex'
-import { ROUTES_BY_NAME, ROUTES_TO_SHOW } from '@/router/headerRouterConfig';
+import { ROUTES_BY_NAME } from '@/router/headerRouterConfig';
 import { Bars3Icon, XMarkIcon } from "@heroicons/vue/24/outline"
 
 
@@ -63,9 +63,9 @@ export default {
     }
   },
   computed: {
-    ...mapGetters(['isAuthenticated', 'isAuthenticating', 'userDisplayFirstName']),
+    ...mapGetters(['isAuthenticated', 'isAuthenticating', 'userDisplayFirstName', 'categories']),
     mobileRoutes() {
-      let routes = ROUTES_TO_SHOW;
+      let routes = this.categoriesRoutes;
       
       if (!this.isAuthenticated && !this.isAuthenticating) {
         routes = routes.concat([ROUTES_BY_NAME.login]);
@@ -74,7 +74,17 @@ export default {
       return routes;
     },
     desktopRoutes() {
-      return ROUTES_TO_SHOW;
+      return this.categoriesRoutes;
+    },
+    categoriesRoutes() {
+      if (this.categories) {
+        return this.categories.map(c => ({
+          text: c.name,
+          path: `/category/${c.id}`
+        }));
+      }
+
+      return [];
     }
   },
   methods: {

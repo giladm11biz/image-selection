@@ -2,7 +2,6 @@ import { Controller, Post, Body, Patch, UseGuards, HttpStatus, HttpCode, Request
 import { UsersService } from './users.service';
 import _ from 'lodash';
 import { AuthGuard } from 'src/modules/auth/guards/auth.guard';
-import { CreateUserDto } from './dtos/CreateUser.dto';
 import { UpdateUserDto } from './dtos/UpdateUser.dto';
 
 @Controller('users')

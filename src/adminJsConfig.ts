@@ -2,6 +2,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TelegramModule } from './modules/telegram/telegram.module';
 import { TelegramService } from './modules/telegram/telegram.service';
 import { User } from './modules/users/user.entity';
+import { Category } from './modules/categories/category.entity';
 import bcrypt from 'bcrypt';
 
 export default async () =>  {
@@ -18,7 +19,7 @@ const AdminJS = await import('adminjs');
     useFactory: (telegramService: TelegramService) => ({
       adminJsOptions: {
         rootPath: '/admin',
-        resources: [User],        
+        resources: [User, Category],        
       },
       auth: {
         authenticate: async (email, password) => {

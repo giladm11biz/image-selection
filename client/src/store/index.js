@@ -9,6 +9,7 @@ export default createStore({
       userData: null,
       isAuthenticating: false,
       isGoogleAuthLoaded: false,
+      categories: null,
     }
   },
   getters: {
@@ -17,7 +18,8 @@ export default createStore({
     isAuthenticating: state => state.isAuthenticating,
     userDisplayFirstName: state => state.userData.name.split(' ')[0],
     userData: state => state.userData,
-    isGoogleAuthLoaded: state => state.isGoogleAuthLoaded
+    isGoogleAuthLoaded: state => state.isGoogleAuthLoaded,
+    categories: state => state.categories,
   },
   mutations: {
     setAuthenticated(state, value) {
@@ -41,7 +43,9 @@ export default createStore({
     setIsGoogleAuthLoaded(state) {
       state.isGoogleAuthLoaded = true;
     },
-
+    setCategories(state, categories) {
+      state.categories = categories;
+    },
   },
   actions: {
     setAuthenticated({ commit }, value) {
@@ -84,13 +88,18 @@ export default createStore({
       ElMessage({...message, duration: 10000, showClose: true});
     },
     async loginAndSaveUserIfHasToken({ commit }) {
+      let isLoggedIn = false;
       commit('setIsAuthenticating', true);
       try {
         let user = await UserService.loginIfHasToken();
         commit('setUserData', user);  
+
+        isLoggedIn = user != null;
       } finally {
         commit('setIsAuthenticating', false);
       }
+
+      return isLoggedIn;
     }
   }
 })

@@ -29,6 +29,7 @@ import Footer from './components/infra/Footer.vue';
 import { mapGetters, mapActions, mapMutations } from 'vuex';
 import messagesMixin from '@/mixins/messages.mixin';
 import UserService from '@/services/UserService';
+import CategoriesService from '@/services/CategoriesService';
 
 
 export default {
@@ -104,13 +105,16 @@ export default {
     Window.hideFirstLoader();
     this.showMessageIfNeeded();
     this.loginAndSaveUserIfHasToken().then(isLoggedIn => {
-      if (!isLoggedIn) {
+      if (isLoggedIn) {
+        CategoriesService.loadCategories();
+      } else {
         this.loadGoogleAuth();
       }
     }).catch(err => {
       console.info('Token expired', err);
       this.loadGoogleAuth();
     });
+    
   },
 }
 </script>
