@@ -10,6 +10,7 @@ import { promisify } from 'util';
 import { exec } from 'child_process';
 import { User } from '../users/user.entity';
 import sharp from 'sharp'; 
+import { CropDataDto } from './dtos/CropData.dto';
 
 @Injectable()
 export class CategoriesService {
@@ -77,24 +78,27 @@ export class CategoriesService {
         return result;
     }
 
-    async cropImage(category: Category, user: User, imageName: string, cropData: any): Promise<any> {
+    async cropImage(category: Category, user: User, imageName: string, cropData: CropDataDto): Promise<any> {
         const imagePath = path.join(category.sourcePath, imageName);
         const image = await this.getImageByName(category, imageName);
         if (!image) {
           throw new Error('Image not found in cache');
         }
     
-        const outputPath = imagePath;
-        const { width, height, x, y } = cropData;
+        const outputPath = imagePath + 'c';
+        let { width, height, left, top } = cropData;
+
+        top = Math.max(0, top);
+        left = Math.max(0, left);
 
         await sharp(imagePath)
-          .extract({ width, height, left: x, top: y })
+          .extract({ width, height, left, top })
           .toFile(outputPath);
             
 
         await this.addUndoAction(category, user, { action: 'crop', image });
 
-        return await this.getImageByName(category, imageName);
+        return await this.getImageByName(category, imageName + 'c');
     }
 
     async undoCropImage(category: Category, image) {

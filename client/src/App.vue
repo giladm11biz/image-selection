@@ -10,7 +10,7 @@
           </div>
           <router-view v-slot="{ Component, route }">
             <Transition name="fade-faster" mode="out-in">
-              <component :is="Component" :key="route.name"></component>
+              <component :is="Component" :key="route.params.id || route.name"></component>
             </Transition> 
           </router-view>
         </div>

@@ -1,7 +1,8 @@
-import { Controller, Delete, Get, Param, Post, Request, Response, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Request, Response, UseGuards } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CategoryGuard } from './guards/category.guard';
+import { CropDataDto } from './dtos/CropData.dto';
 
 @Controller('categories')
 @UseGuards(AuthGuard)
@@ -39,8 +40,8 @@ export class CategoriesController {
 
   @UseGuards(CategoryGuard)
   @Post(':id/:imageName/crop')
-  async crop(@Request() req, @Param('imageName') imageName: string) {
-    return await this.categoriesService.cropImage(req.category, req.user, imageName, req.body);
+  async crop(@Request() req, @Param('imageName') imageName: string, @Body() CropData: CropDataDto) {
+    return await this.categoriesService.cropImage(req.category, req.user, imageName, CropData);
   }
 
   @UseGuards(CategoryGuard)
