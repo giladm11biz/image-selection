@@ -8,6 +8,9 @@ import * as path from 'path';
 import { User } from '../users/user.entity';
 import sharp from 'sharp'; 
 import { CropDataDto } from './dtos/CropData.dto';
+import _ from 'lodash';
+
+const IMAGES_LIST_TIMEOUT = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class CategoriesService {
@@ -21,21 +24,110 @@ export class CategoriesService {
         return await this.categoriesRepository.find();
     }
 
-    async getImageByIndex(category: Category, index: number = 0) {
-        const file = fs.readdirSync(category.sourcePath)[index];
+    getImagesListKey(category: Category) {
+        return `category_${category.id}_images_by_user`;
+    }
+
+    getImagesListLockKey(category: Category) {
+        return `category_${category.id}_images_by_user_lock`;
+    }
+
+    async refreshRedisData(category: Category, userToRemove: User = null) {
+        const imagesKey = this.getImagesListKey(category);
+        const lockKey = this.getImagesListLockKey(category);
+
+        const files = fs.readdirSync(category.sourcePath);
+
+        let lock = await this.redisService.lockKey(lockKey);
+        
+        try {
+
+            let redisData = await this.redisService.get(imagesKey);
+
+            let imagesData = redisData && redisData != '' ? JSON.parse(redisData) : {};
+
+            if (userToRemove) {
+                delete imagesData[userToRemove.id];
+            }
+
+            let usedImages = {...imagesData};
+            delete usedImages[-1];
+
+            usedImages = _.flatten(Object.values(usedImages));
+
+            imagesData[-1] = _.difference(files, usedImages);
+
+
+            this.redisService.set(imagesKey, JSON.stringify(imagesData), IMAGES_LIST_TIMEOUT);
+            
+        } finally {
+            this.redisService.unlockKey(lock);
+        }
+
+    }
+
+    async getUserNextImageNameAndSaveToRedis(category: Category, user: User) {
+
+        const imagesKey = this.getImagesListKey(category);
+        const lockKey = this.getImagesListLockKey(category);
+
+        let time = new Date().valueOf();
+        console.log('before lock', time);
+
+
+        let lock = await this.redisService.lockKey(lockKey);
+
+        let imageName = null;
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+
+        try {
+            let redisData = await this.redisService.get(imagesKey);
+
+            let imagesData = redisData ? JSON.parse(redisData) : {};
+    
+            if (!imagesData[user.id]) {
+                imagesData[user.id] = [];
+            }
+    
+    
+            if (imagesData[-1] && imagesData[-1].length > 0) {
+                imageName = imagesData[-1].shift();
+                imagesData[user.id].push(imageName);
+            }
+    
+            this.redisService.set(imagesKey, JSON.stringify(imagesData), IMAGES_LIST_TIMEOUT);
+    
+        } finally {
+            await this.redisService.unlockKey(lock);
+            console.log('after lock', time);
+        }
+
+
+        return imageName;
+    }
+
+    async getUserNextImage(category: Category, user: User, resetUserImages: boolean = false) {
+        if (resetUserImages) {
+            this.refreshRedisData(category, resetUserImages ? user : null);
+        }
+
+        let userNextImageName = await this.getUserNextImageNameAndSaveToRedis(category, user);
         //     .filter(file => /\.(jpg|jpeg|png|gif)$/.test(file))
 
-        if (!file) {
+        if (!userNextImageName) {
             return null;
         }
 
-        const filePath = path.join(category.sourcePath, file);
+        const filePath = path.join(category.sourcePath, userNextImageName);
+
         if (!fs.existsSync(filePath)) {
             return null;
         }
 
         return {
-            fileName: file,
+            fileName: userNextImageName,
             data: `data:image/png;base64,${fs.readFileSync(filePath, { encoding: 'base64' })}`
         };
     }

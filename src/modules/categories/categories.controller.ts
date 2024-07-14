@@ -15,9 +15,9 @@ export class CategoriesController {
   }
 
   @UseGuards(CategoryGuard)
-  @Get(':id/:imageIndex')
-  async getImage(@Request() req, @Response() response, @Param('imageIndex') imageIndex: number) {
-    let image = await this.categoriesService.getImageByIndex(req.category, imageIndex);
+  @Get(':id/image/:type?')
+  async getImage(@Request() req, @Response() response, @Param('type') type: string) {
+    let image = await this.categoriesService.getUserNextImage(req.category, req.user, type == 'first');
 
     if (image) {
       return response.status(200).send(image)
@@ -27,7 +27,7 @@ export class CategoriesController {
   }
 
   @UseGuards(CategoryGuard)
-  @Get(':id/:imageName')
+  @Get(':id/imageName/:imageName')
   async getImageByName(@Request() req, @Response() response, @Param('imageName') imageName: string) {
     let image = await this.categoriesService.getImageByName(req.category, imageName);
 

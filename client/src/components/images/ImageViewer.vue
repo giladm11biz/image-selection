@@ -336,7 +336,7 @@ export default {
       this.imagesCache = [];
       
       try {
-        await this.startLoadingImages(1, 0);
+        await this.startLoadingImages(1);
         this.hideLoadingMessage();
         await this.setCurrentImageIndex(0);
         await this.loadMoreImagesIfNeeded();
@@ -346,9 +346,14 @@ export default {
         this.hideLoadingMessage();
       }
     },
-    async loadImage(index) {
+    async loadImage(isFirstImage = false) {
       try {
-        const response = await axios.get(`/api/categories/${this.categoryId}/${index}`);
+        let url = `/api/categories/${this.categoryId}/image`;
+
+        if (isFirstImage) {
+          url += '/first';
+        }
+        const response = await axios.get(url);
 
         if (response.status == 204 || response.data == null || response.data.url == '') {
           return null;
@@ -356,7 +361,7 @@ export default {
 
         return response.data;
       } catch (error) {
-        this.addErrorMessage('Error loading image(index:' + index +')');
+        this.addErrorMessage('Error loading image');
         console.error('Error loading image:', error);
         return null;
       }
@@ -364,16 +369,16 @@ export default {
     async loadMoreImagesIfNeeded() {
       if (this.imagesCache.length < IMAGES_TO_PRELOAD && !this.isEndReached) {
         let number_of_images = IMAGES_TO_PRELOAD - this.imagesCache.length;
-        await this.startLoadingImages(number_of_images, this.imagesCache.length);
+        await this.startLoadingImages(number_of_images);
       }
     },
-    async startLoadingImages(numberOfImages = 1, startIndex = 0) {
+    async startLoadingImages(numberOfImages = 1) {
       for (let i = 0; i < numberOfImages; i++) {
         let uuid = (new Date()).valueOf();
         this.imagesCache.push({
           uuid: uuid,
           isFinished: false,
-          promise: this.loadImage(i + startIndex).then(result => this.handleImageLoaded(uuid, result)),
+          promise: this.loadImage(this.imagesCache.length == 0).then(result => this.handleImageLoaded(uuid, result)),
           image: null,
         }
         )
@@ -492,14 +497,6 @@ export default {
     nextImage() {
       if (this.currentImageIndex < this.imagesCache.length - 1) {
         this.setCurrentImageIndex(this.currentImageIndex + 1);
-      }
-    },
-    async updateImageCount() {
-      try {
-        const response = await axios.get(`/api/categories/${this.categoryId}`);
-        this.imageCount = response.data.length;
-      } catch (error) {
-        console.error('Error fetching image count:', error);
       }
     },
   },
