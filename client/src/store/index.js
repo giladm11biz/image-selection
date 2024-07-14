@@ -12,6 +12,7 @@ export default createStore({
       isAuthenticating: false,
       isGoogleAuthLoaded: false,
       categories: null,
+      isFullScreen: false,
     }
   },
   getters: {
@@ -23,7 +24,8 @@ export default createStore({
     userData: state => state.userData,
     isGoogleAuthLoaded: state => state.isGoogleAuthLoaded,
     categories: state => state.categories,
-    showMenuLoadingMessage: state => state.showMenuLoadingMessage
+    showMenuLoadingMessage: state => state.showMenuLoadingMessage,
+    isFullScreen: state => state.isFullScreen
   },
   mutations: {
     setAuthenticated(state, value) {
@@ -58,6 +60,9 @@ export default createStore({
     setCategories(state, categories) {
       state.categories = categories;
     },
+    setIsFullScreen(state, value) {
+      state.isFullScreen = value
+    }
   },
   actions: {
     setAuthenticated({ commit }, value) {

@@ -5,9 +5,6 @@ import { Repository } from 'typeorm';
 import { RedisService } from '../redis/redis.service';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as Redis from 'ioredis';
-import { promisify } from 'util';
-import { exec } from 'child_process';
 import { User } from '../users/user.entity';
 import sharp from 'sharp'; 
 import { CropDataDto } from './dtos/CropData.dto';
@@ -73,9 +70,17 @@ export class CategoriesService {
 
         let result = undoActionsArray.shift();
 
-        await this.redisService.set(key, JSON.stringify(undoActionsArray), 60 * 60 * 1000);
 
         return result;
+    }
+
+    async removeLastUndoAction(category: Category, user: User) {
+        let key = 'undo_' + category.id + '_' + user.id;
+        let undoActions = await this.redisService.get(key);
+        let undoActionsArray = JSON.parse(undoActions);
+
+        undoActionsArray.shift()
+        await this.redisService.set(key, JSON.stringify(undoActionsArray), 60 * 60 * 1000);
     }
 
     async cropImage(category: Category, user: User, imageName: string, cropData: CropDataDto): Promise<any> {
@@ -85,20 +90,31 @@ export class CategoriesService {
           throw new Error('Image not found in cache');
         }
     
-        const outputPath = imagePath + 'c';
-        let { width, height, left, top } = cropData;
+        const outputPath = imagePath;
 
-        top = Math.max(0, top);
-        left = Math.max(0, left);
 
-        await sharp(imagePath)
-          .extract({ width, height, left, top })
-          .toFile(outputPath);
+
+        sharp.cache(false);
+        let file = sharp(imagePath);
+
+
+        let fileData = await file.metadata();
+
+        let top = Math.max(0, cropData.top);
+        let left = Math.max(0, cropData.left);
+        let width = Math.min(fileData.width - left, cropData.width);
+        let height = Math.min(fileData.height- top, cropData.height);
+
+        await file.extract({ width, height, left, top })
+                  .toFile(outputPath + '_temp');
+
+        await fs.unlinkSync(imagePath);
+        await fs.renameSync(outputPath + '_temp', imagePath);
             
 
         await this.addUndoAction(category, user, { action: 'crop', image });
 
-        return await this.getImageByName(category, imageName + 'c');
+        return await this.getImageByName(category, imageName);
     }
 
     async undoCropImage(category: Category, image) {
@@ -121,7 +137,7 @@ export class CategoriesService {
     
         fs.unlinkSync(imagePath);
 
-        await this.addUndoAction(category, null, { action: 'delete', image });
+        await this.addUndoAction(category, user, { action: 'delete', image });
     }
 
     async undoDeleteImage(category: Category, image) {
@@ -154,9 +170,9 @@ export class CategoriesService {
 
     async undoAction(category: Category, user: User): Promise<void> {
         const actionFunctionMap = {
-          'crop': this.undoCropImage,
-          'delete': this.undoDeleteImage,
-          'move': this.undoMoveImageToAcceptedLocation
+          'crop': this.undoCropImage.bind(this),
+          'delete': this.undoDeleteImage.bind(this),
+          'move': this.undoMoveImageToAcceptedLocation.bind(this)
         };
 
         const lastAction = await this.getLastUndoAction(category, user);
@@ -169,7 +185,11 @@ export class CategoriesService {
             throw new Error('Invalid action');
         }
 
-        return await actionFunctionMap[lastAction.action](category, lastAction.image);
+        let result = await actionFunctionMap[lastAction.action](category, lastAction.image);
+
+        await this.removeLastUndoAction(category, user);
+
+        return result;
     }
     
 }

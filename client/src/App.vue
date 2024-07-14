@@ -1,7 +1,8 @@
 <template>
-    <Transition name="fade" appear><Header /></Transition>
+  <div class="app-container" :class="{ 'full-screen': isFullScreen }">
+    <Transition name="fade" appear v-if="!isFullScreen"><Header /></Transition>
     <Transition name="fade" appear>
-    <div class="main"  :class="{ 'full-page': showFullPage }">
+    <div class="main" :class="{ 'full-page': showFullPage }">
       <div class="page-body">
         <div class="container">
           <div class="loading-animation-overlay" v-if="isShowLoadingMessage">
@@ -17,6 +18,7 @@
       </div>
     </div>
     </Transition>
+  </div>
 </template>
 
 <script>
@@ -35,14 +37,14 @@ export default {
     Header
   },
   computed: {
-    ...mapGetters(['messages', 'isShowLoadingMessage', 'loadingMessageText']),
+    ...mapGetters(['messages', 'isShowLoadingMessage', 'loadingMessageText', 'isFullScreen']),
     showFullPage() {
       return this.$route.meta && this.$route.meta.fullPage;
     }
   },
   methods: {
     ...mapActions(['loginAndSaveUserIfHasToken', 'showLoadingMessage', 'hideLoadingMessage', 'addSuccessMessage', 'addErrorMessage']),
-    ...mapMutations(['setIsGoogleAuthLoaded']),
+    ...mapMutations(['setIsGoogleAuthLoaded', 'setIsFullScreen']),
     showMessageIfNeeded() {
       let urlParams = new URLSearchParams(window.location.search);
       let message = urlParams.get('showMessage');
@@ -99,8 +101,20 @@ export default {
         this.setIsGoogleAuthLoaded();
       };
     },
+    checkAndUpdateFullScreen() {
+      let isFullScreen = (window.fullScreen) ||
+                         (window.innerHeight == screen.height);
+
+      // not mobile
+      isFullScreen = isFullScreen && !((window.innerWidth <= 800) && (window.innerHeight <= 600));
+
+      this.setIsFullScreen(isFullScreen);
+    }
   },
   mounted() {
+    window.addEventListener('resize', this.checkAndUpdateFullScreen);
+    this.checkAndUpdateFullScreen();
+
     Window.hideFirstLoader();
     this.showMessageIfNeeded();
     this.loginAndSaveUserIfHasToken().then(isLoggedIn => {
@@ -115,6 +129,9 @@ export default {
     });
     
   },
+  beforeUnmount() {
+    document.removeEventListener("resize", this.checkFullScreen);
+  },
 }
 </script>
 
@@ -127,6 +144,18 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   width: 100%;
   max-width: 100%;
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-container {
+  width: 100%;
+  max-width: 100%;
+  flex: 1;
   display: grid;
   grid-template-rows: auto 1fr auto;
   min-height: 100vh;
@@ -134,6 +163,10 @@ export default {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
+}
+
+.app-container.full-screen {
+  grid-template-rows: 1fr;
 }
 
 .main {

@@ -22,6 +22,12 @@ import _ from 'lodash';
         throw new UnauthorizedException();
       }
 
+      if (params.imageName) {
+        if (params.imageName.includes('/') || params.imageName.includes('\\') || params.imageName.includes('..')) {
+          throw new UnauthorizedException();
+        }
+      }
+
       let categories = (await this.categoryService.getCategoriesForUser(request.user))
                                                   .filter(category => category.id == id);
 
@@ -30,10 +36,16 @@ import _ from 'lodash';
         throw new UnauthorizedException();
       }
 
+      let category = categories[0];
 
-      console.log("ADD AUTHORIZED PATH");
+      request['category'] = category;
 
-      request['category'] = categories[0];
+      let isAllowedPath = category.sourcePath.toLowerCase().startsWith(process.env.AUTHORIZED_PATH.toLowerCase()) && 
+                          category.destinationPath.toLowerCase().startsWith(process.env.AUTHORIZED_PATH.toLowerCase());
+
+      if (!isAllowedPath) {
+        throw new UnauthorizedException();
+      }
 
       return true;
     }

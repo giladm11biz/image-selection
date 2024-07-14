@@ -2,6 +2,6 @@ import { mapActions } from 'vuex';
 
 export default {
     methods: {
-        ...mapActions(['showLoadingMessage', 'hideLoadingMessage', 'addSuccessMessage', 'addErrorMessage']),
+        ...mapActions(['showLoadingMessage', 'hideLoadingMessage', 'addSuccessMessage', 'addErrorMessage', 'addWarningMessage']),
     }
 }
