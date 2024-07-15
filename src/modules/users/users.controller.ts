@@ -3,6 +3,7 @@ import { UsersService } from './users.service';
 import _ from 'lodash';
 import { AuthGuard } from 'src/modules/auth/guards/auth.guard';
 import { UpdateUserDto } from './dtos/UpdateUser.dto';
+import { CreateUserDto } from './dtos/CreateUser.dto';
 
 @Controller('users')
 export class UsersController {
