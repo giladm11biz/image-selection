@@ -48,12 +48,16 @@ const AdminJS = await import('adminjs');
         },
         cookieName: 'admin',
         cookiePassword:
-          'enterString',
+          process.env.ADMIN_SECRET,
       },
       sessionOptions: {
         resave: true,
         saveUninitialized: true,
-        secret: 'secret'
+        secret: process.env.ADMIN_SECRET,
+        cookie: {
+          httpOnly: process.env.NODE_ENV != 'production',
+          secure: process.env.NODE_ENV != 'production',
+        },    
       },
     }),
 })};
