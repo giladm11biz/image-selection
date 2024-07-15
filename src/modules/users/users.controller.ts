@@ -8,25 +8,25 @@ import { UpdateUserDto } from './dtos/UpdateUser.dto';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // @Post()
-  // async create(@Body() userData: CreateUserDto) {
-  //   let propsToSave = ['email', 'password', 'name', 'nickname', 'mailUpdates'];
-  //   let data = _.pick(userData, propsToSave);
+  @Post()
+  async create(@Body() userData: CreateUserDto) {
+    let propsToSave = ['email', 'password', 'name', 'nickname', 'mailUpdates'];
+    let data = _.pick(userData, propsToSave);
 
-  //   data.name = data.name.trim();
+    data.name = data.name.trim();
 
-  //   if (data.nickname) {
-  //     data.nickname = data.nickname.trim();
+    if (data.nickname) {
+      data.nickname = data.nickname.trim();
 
-  //     if (data.nickname == '' || data.nickname.length == 1) {
-  //       data.nickname = null;
-  //     }
-  //   }
+      if (data.nickname == '' || data.nickname.length == 1) {
+        data.nickname = null;
+      }
+    }
 
-  //   let user = await this.usersService.create(data);
+    let user = await this.usersService.create(data);
     
-  //   return {success: true, email: user.email};
-  // }
+    return {success: true, email: user.email};
+  }
 
   @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)
