@@ -1,7 +1,7 @@
-<h1>Next.js Project with Vue.js</h1>
+<h1>User and Image Management System Written In NestJs and Vue.js </h1>
 
 <h2>Overview</h2>
-<p>This project is a comprehensive web application built with Next.js and Vue.js, designed to manage users and images efficiently. It includes robust user management features, image categorization and manipulation capabilities, error handling via Telegram, and an admin panel using AdminJS.</p>
+<p>This project is a comprehensive web application built with NestJs and Vue.js, designed to manage users and images efficiently. It includes robust user management features, image categorization and manipulation capabilities, error handling via Telegram, and an admin panel using AdminJS.</p>
 
 <b>The system currently supports a single user without permissions management, as it is designed for my individual use. However, it is built with future scalability in mind to accommodate multiple users and comprehensive permissions control.</b>
 
