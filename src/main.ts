@@ -4,12 +4,18 @@ import { ValidationPipe } from './pipes/validation.pipe';
 import { useContainer } from 'class-validator';
 import { SendErrorsToTelegramFilter } from './filters/sendErrorsToTelegram.filter';
 import { TelegramService } from './modules/telegram/telegram.service';
-
+import * as compression from 'compression';
+import * as iltorb from 'iltorb';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ValidationPipe());
   app.useGlobalFilters(new SendErrorsToTelegramFilter(app.get(HttpAdapterHost), app.get(TelegramService)));
+  app.use(compression.default({
+    level: 9, // Set the compression level (0-9)
+    threshold: 1024 * 1000, // Compress responses only if they are larger than 1 MB
+    brotli: iltorb,
+  }));
   useContainer(app.select(AppModule), {fallbackOnErrors: true});
 
 

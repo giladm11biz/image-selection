@@ -133,8 +133,16 @@ export class CategoriesService {
 
         return {
             fileName: userNextImageName,
-            data: `data:image/png;base64,${fs.readFileSync(filePath, { encoding: 'base64' })}`
+            data: `data:image/png;base64,${await this.getImageBase64(filePath)}`
         };
+    }
+
+    async getImageBase64(fileName) {
+        let buffer = await sharp(fileName)
+                           .webp({ quality: 100 }) // Lossless PNG compression
+                           .toBuffer();
+
+        return buffer.toString('base64');
     }
 
     async getImageByName(category: Category, name: string) {
@@ -142,7 +150,7 @@ export class CategoriesService {
 
         return {
             fileName: name,
-            data: `data:image/png;base64,${fs.readFileSync(fileName, { encoding: 'base64' })}`
+            data: `data:image/png;base64,${await this.getImageBase64(fileName)}`
         };
     }
 
