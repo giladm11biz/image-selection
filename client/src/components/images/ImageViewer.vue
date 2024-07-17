@@ -106,7 +106,7 @@ import messagesMixin from '@/mixins/messages.mixin';
 import axios from 'axios';
 import { mapGetters } from 'vuex';
 import { Cropper } from 'vue-advanced-cropper'
-const IMAGES_TO_PRELOAD = 10;
+const IMAGES_TO_PRELOAD = 20;
 
 
 export default {
@@ -476,7 +476,7 @@ export default {
             return;
           }
 
-          let imageIndex = this.imagesCache.findIndex(imageCache => imageCache.image.fileName == response.data.fileName);
+          let imageIndex = this.imagesCache.findIndex(imageCache => imageCache.image && (imageCache.image.fileName == response.data.fileName));
 
           if (imageIndex == -1) {
             this.imagesCache.unshift({
