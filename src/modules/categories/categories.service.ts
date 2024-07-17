@@ -10,7 +10,9 @@ import sharp from 'sharp';
 import { CropDataDto } from './dtos/CropData.dto';
 import _ from 'lodash';
 
-const IMAGES_LIST_TIMEOUT = 24 * 60 * 60 * 1000;
+const IMAGES_LIST_TIMEOUT = 24 * 60 * 60;
+const UNDO_ACTIONS_TIMEOUT = 8 * 60 * 60;
+const UNDO_ACTIONS_TO_SAVE = 10;
 
 @Injectable()
 export class CategoriesService {
@@ -28,13 +30,17 @@ export class CategoriesService {
         return `category_${category.id}_images_by_user`;
     }
 
-    getImagesListLockKey(category: Category) {
-        return `category_${category.id}_images_by_user_lock`;
+    getLockKey(key) {
+        return key + "_lock";
+    }
+
+    getUndoActionListKey(category: Category, user: User) {
+        return `undo_${category.id}_${user.id}`;
     }
 
     async refreshRedisData(category: Category, userToRemove: User = null) {
         const imagesKey = this.getImagesListKey(category);
-        const lockKey = this.getImagesListLockKey(category);
+        const lockKey = this.getLockKey(imagesKey);
 
         const files = fs.readdirSync(category.sourcePath);
 
@@ -69,7 +75,7 @@ export class CategoriesService {
     async getUserNextImageNameAndSaveToRedis(category: Category, user: User) {
 
         const imagesKey = this.getImagesListKey(category);
-        const lockKey = this.getImagesListLockKey(category);
+        const lockKey = this.getLockKey(imagesKey);
 
         let time = new Date().valueOf();
         console.log('before lock', time);
@@ -80,7 +86,6 @@ export class CategoriesService {
         let imageName = null;
 
         await new Promise(resolve => setTimeout(resolve, 1000));
-
 
         try {
             let redisData = await this.redisService.get(imagesKey);
@@ -142,37 +147,21 @@ export class CategoriesService {
     }
 
     async addUndoAction(category: Category, user: User, actionData: any) {
-        let key = 'undo_' + category.id + '_' + user.id;
+        let key = this.getUndoActionListKey(category, user);
         
-        let undoActions = await this.redisService.get(key);
-
-        let undoActionsArray = undoActions ? JSON.parse(undoActions) : [];
-
-        undoActionsArray.unshift(actionData);
-        undoActionsArray.splice(10);
-        
-        await this.redisService.set(key, JSON.stringify(undoActionsArray), 24 * 60 * 60 * 1000);
+        await this.redisService.lpush(key, JSON.stringify(actionData), UNDO_ACTIONS_TIMEOUT);
+        await this.redisService.ltrim(key, 0, UNDO_ACTIONS_TO_SAVE - 1);
     }
 
     async getLastUndoAction(category: Category, user: User) {
-        let key = 'undo_' + category.id + '_' + user.id;
-        let undoActions = await this.redisService.get(key);
-
-        let undoActionsArray = JSON.parse(undoActions);
-
-        let result = undoActionsArray.shift();
-
-
-        return result;
+        let key = this.getUndoActionListKey(category, user);
+        let undoAction = await this.redisService.lindex(key, 0);
+        return undoAction ? JSON.parse(undoAction) : null;
     }
 
     async removeLastUndoAction(category: Category, user: User) {
-        let key = 'undo_' + category.id + '_' + user.id;
-        let undoActions = await this.redisService.get(key);
-        let undoActionsArray = JSON.parse(undoActions);
-
-        undoActionsArray.shift()
-        await this.redisService.set(key, JSON.stringify(undoActionsArray), 60 * 60 * 1000);
+        let key = this.getUndoActionListKey(category, user);
+        await this.redisService.lpop(key);
     }
 
     async cropImage(category: Category, user: User, imageName: string, cropData: CropDataDto): Promise<any> {
@@ -267,21 +256,30 @@ export class CategoriesService {
           'move': this.undoMoveImageToAcceptedLocation.bind(this)
         };
 
-        const lastAction = await this.getLastUndoAction(category, user);
+        const lockKey = this.getLockKey(this.getUndoActionListKey(category, user));
 
-        if (!lastAction) {
-            return null;
+        let lockObj = await this.redisService.lockKey(lockKey);
+
+        try {
+            const lastAction = await this.getLastUndoAction(category, user);
+
+            if (!lastAction) {
+                return null;
+            }
+    
+            if (!actionFunctionMap[lastAction.action]) {
+                throw new Error('Invalid action');
+            }
+    
+            let result = await actionFunctionMap[lastAction.action](category, lastAction.image);
+    
+            await this.removeLastUndoAction(category, user);
+        
+            return result;    
+        } finally {
+            await this.redisService.unlockKey(lockObj);
         }
 
-        if (!actionFunctionMap[lastAction.action]) {
-            throw new Error('Invalid action');
-        }
-
-        let result = await actionFunctionMap[lastAction.action](category, lastAction.image);
-
-        await this.removeLastUndoAction(category, user);
-
-        return result;
     }
     
 }

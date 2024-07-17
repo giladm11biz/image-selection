@@ -53,11 +53,7 @@ const AdminJS = await import('adminjs');
       sessionOptions: {
         resave: true,
         saveUninitialized: true,
-        secret: process.env.ADMIN_SECRET,
-        cookie: {
-          httpOnly: process.env.NODE_ENV != 'production',
-          secure: process.env.NODE_ENV != 'production',
-        },    
+        secret: process.env.ADMIN_SECRET,  
       },
     }),
 })};

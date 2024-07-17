@@ -125,7 +125,7 @@ export default {
     };
   },
   computed: {
-    ...mapGetters(['isAuthenticated', 'isAuthenticating', 'isFullScreen']),
+    ...mapGetters(['isAuthenticated', 'isAuthenticating', 'isFullScreen', 'isShowLoadingMessage']),
     categoryId() {
       return this.$route.params.id;
     },
@@ -174,7 +174,9 @@ export default {
       return {visibleArea: params.visibleArea, coordinates: params.visibleArea};
     },
     setHotkeys(e) {
-      console.log(e);
+      if (this.isShowLoadingMessage) {
+        return;
+      }
 
       // ArrowLeft = 37 
       if (e.keyCode === 37) {
@@ -184,6 +186,7 @@ export default {
       else if (e.keyCode === 39) {
         this.nextImage();
       } 
+
       // 4 = 52 or Numpad 4 = 100 or 'c'
       else if ([52,100,67].includes(e.keyCode)) {
         if (this.cropMode) {
@@ -255,6 +258,11 @@ export default {
     },
     async finishCroping() {
       if(!this.cropMode) {
+        return;
+      }
+
+      if (!this.currentImage) {
+        this.addWarningMessage("No image is loaded yet");
         return;
       }
 
@@ -433,6 +441,12 @@ export default {
     },
     async acceptOrDeleteImage(isAccept) {
       let image = this.currentImage;
+
+      if (!this.currentImage) {
+        this.addWarningMessage("No image is loaded yet");
+        return;
+      }
+
       this.imagesCache.splice(this.currentImageIndex, 1);
       this.setCurrentImageIndex(this.currentImageIndex);
       this.loadMoreImagesIfNeeded();
