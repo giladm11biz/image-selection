@@ -8,8 +8,6 @@ import axios from 'axios'
 import 'vue-advanced-cropper/dist/style.css';
 
 
-
-
 if (window.location.hostname === 'localhost') {
     axios.defaults.baseURL = 'http://localhost:3000';
 }

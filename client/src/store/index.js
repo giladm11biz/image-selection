@@ -13,6 +13,8 @@ export default createStore({
       isGoogleAuthLoaded: false,
       categories: null,
       isFullScreen: false,
+      socket: null,
+      isSocketConnected: false,
     }
   },
   getters: {
@@ -25,7 +27,9 @@ export default createStore({
     isGoogleAuthLoaded: state => state.isGoogleAuthLoaded,
     categories: state => state.categories,
     showMenuLoadingMessage: state => state.showMenuLoadingMessage,
-    isFullScreen: state => state.isFullScreen
+    isFullScreen: state => state.isFullScreen,
+    socket: state => state.socket,
+    isSocketConnected: state => state.isSocketConnected,
   },
   mutations: {
     setAuthenticated(state, value) {
@@ -62,6 +66,12 @@ export default createStore({
     },
     setIsFullScreen(state, value) {
       state.isFullScreen = value
+    },
+    setSocket(state, value) {
+      state.socket = value
+    },
+    setIsSocketConnected(state, value) {
+      state.isSocketConnected = value;
     }
   },
   actions: {
@@ -117,7 +127,7 @@ export default createStore({
       }
 
       return isLoggedIn;
-    }
+    },
   }
 })
 

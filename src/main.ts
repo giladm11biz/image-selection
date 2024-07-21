@@ -6,9 +6,13 @@ import { SendErrorsToTelegramFilter } from './filters/sendErrorsToTelegram.filte
 import { TelegramService } from './modules/telegram/telegram.service';
 import * as compression from 'compression';
 import * as iltorb from 'iltorb';
+import { WebsocketAdapter } from './websocket/websoket.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const redisIoAdapter = new WebsocketAdapter(app);
+  await redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
   app.useGlobalPipes(new ValidationPipe());
   app.useGlobalFilters(new SendErrorsToTelegramFilter(app.get(HttpAdapterHost), app.get(TelegramService)));
   app.use(compression.default({

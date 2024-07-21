@@ -11,7 +11,7 @@
             <div class="icon-button-border" @click="closeSidebar"><XMarkIcon /></div>
           </div>
           <div class="menu-links">
-            <div v-if="showMenuLoadingMessage" class="menu-loading">Loading...</div>
+            <div v-if="showRoutesLoadingMessage" class="menu-loading">Loading...</div>
             <div v-for="route in mobileRoutes" :key="route.path" class="menu-link"><router-link active-class="selected" :to="route.path" @click="closeSidebar">{{ route.text }}</router-link></div>
           </div>
           <div class="menu-links bottom">
@@ -25,7 +25,7 @@
     <nav>
         <div class="hide-on-mobile hide-on-tablet">
           <div class="site-links links">
-            <div v-if="showMenuLoadingMessage" class="menu-loading">Loading...</div>
+            <div v-if="showRoutesLoadingMessage" class="menu-loading">Loading...</div>
             <div v-for="route in desktopRoutes" :key="route.path"><router-link active-class="selected" :to="route.path">{{ route.text }}</router-link></div>
           </div>
         </div>
@@ -33,7 +33,7 @@
           <div class="icon-button-border"><Bars3Icon /></div>
         </div>
         <div class="auth-links links">
-          <div v-if="isAuthenticating" class="">Logging in...</div>
+          <div v-if="isAuthenticating">Logging in...</div>
           <template v-else>
             <div v-if="!isAuthenticated"><router-link active-class="selected" to="/login">Log In</router-link></div>
             <div v-if="isAuthenticated">
@@ -65,7 +65,7 @@ export default {
     }
   },
   computed: {
-    ...mapGetters(['isAuthenticated', 'isAuthenticating', 'userDisplayFirstName', 'categories', 'showMenuLoadingMessage']),
+    ...mapGetters(['isAuthenticated', 'isAuthenticating', 'userDisplayFirstName', 'categories', 'showMenuLoadingMessage', 'isSocketConnected']),
     mobileRoutes() {
       let routes = this.categoriesRoutes;
       
@@ -79,7 +79,7 @@ export default {
       return this.categoriesRoutes;
     },
     categoriesRoutes() {
-      if (this.categories) {
+      if (this.categories && this.isSocketConnected) {
         return this.categories.map(c => ({
           text: c.name,
           path: `/category/${c.id}`
@@ -87,6 +87,9 @@ export default {
       }
 
       return [];
+    },
+    showRoutesLoadingMessage() {
+      return this.showMenuLoadingMessage || this.isAuthenticated && !this.isSocketConnected;
     }
   },
   methods: {

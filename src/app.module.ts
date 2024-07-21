@@ -13,8 +13,8 @@ import { MailModule } from './modules/mail/mail.module';
 import { ProfanityModule } from './modules/profanity/profanity.module';
 import { IsNotProfanityConstraint } from './validators/IsNotProfanity.validator';
 import adminJsConfig from './adminJsConfig';
-import { APP_GUARD } from '@nestjs/core';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { WebsocketGateway } from './websocket/websocket.gateway';
 
 
 
@@ -43,7 +43,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
     CategoriesModule,
   ],
   controllers: [AppController],
-  providers: [AppService, IsUniqueConstraint, IsExistsConstraint, IsNotProfanityConstraint],
+  providers: [AppService, IsUniqueConstraint, IsExistsConstraint, IsNotProfanityConstraint, WebsocketGateway],
 })
 
 

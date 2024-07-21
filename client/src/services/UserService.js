@@ -1,6 +1,7 @@
 import store from "@/store";
 import axios from "axios";
 import CategortiesService from "@/services/CategoriesService";
+import SocketService from "./SocketService";
 
 export default class UserService {
     static async registerRequest(userData) {
@@ -27,7 +28,7 @@ export default class UserService {
         if (result && result.success) {
             this.saveToken(result.access_token);
             await store.dispatch('loginAndSaveUserIfHasToken');
-            await this.afterLoginActions();
+            await this.afterLoginActions(result.access_token);
         }
 
         return result;
@@ -38,8 +39,10 @@ export default class UserService {
         return response.data; 
     }
 
-    static async afterLoginActions() {
+    static async afterLoginActions(token) {
         await CategortiesService.loadCategories();
+        await SocketService.startSocket(token);
+
     }
 
 
@@ -49,7 +52,7 @@ export default class UserService {
         if (result && result.success) {
             this.saveToken(result.access_token);
             await store.dispatch('loginAndSaveUserIfHasToken');
-            await this.afterLoginActions();
+            await this.afterLoginActions(result.access_token);
         }
 
         return result;
