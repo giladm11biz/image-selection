@@ -18,6 +18,11 @@ export class RedisService {
     return await this.client.get(key);
   }
 
+  async del(key: string): Promise<number> {
+    return await this.client.del(key);
+  }
+  
+
   async lockKey(key: string, lockTime: number = 5 * 60 * 1000): Promise<RedisLock> {
     return await this.lock.acquire([key], lockTime);
   }
@@ -70,5 +75,31 @@ export class RedisService {
 
   async expire(key: string, expirationSeconds: number) {
     await this.client.expire(key, expirationSeconds);
+  }
+
+  
+  async sadd(key: string, members: string[]): Promise<number> {
+    return await this.client.sadd(key, members);
+  }
+
+  async srem(key: string, members: string[]): Promise<number> {
+    return await this.client.srem(key, members);
+  }
+
+  async sismember(key: string, member: string): Promise<number> {
+    return await this.client.sismember(key, member);
+  }
+
+  async smembers(key: string): Promise<string[]> {
+    return await this.client.smembers(key);
+  }
+
+  async scard(key: string): Promise<number> {
+    return await this.client.scard(key);
+  }
+
+
+  async mget(keys: string[]): Promise<Array<string | null>> {
+    return await this.client.mget(keys);
   }
 }

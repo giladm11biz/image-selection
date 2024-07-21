@@ -11,13 +11,13 @@ export class CategoriesController {
 
   @Get()
   async findAll(@Request() req) {
-    return (await this.categoriesService.getCategoriesForUser(req.user)).map(category => category.getClientData());
+    return (await this.categoriesService.getCategoriesForUser(req.user.id)).map(category => category.getClientData());
   }
 
   @UseGuards(CategoryGuard)
   @Get(':id/image/:type?')
   async getImage(@Request() req, @Response() response, @Param('type') type: string) {
-    let image = await this.categoriesService.getUserNextImage(req.category, req.user, type == 'first');
+    let image = await this.categoriesService.getUserNextImage(req.category, req.user.id, type == 'first');
 
     if (image) {
       return response.status(200).send(image)
@@ -41,24 +41,24 @@ export class CategoriesController {
   @UseGuards(CategoryGuard)
   @Post(':id/:imageName/crop')
   async crop(@Request() req, @Param('imageName') imageName: string, @Body() CropData: CropDataDto) {
-    return await this.categoriesService.cropImage(req.category, req.user, imageName, CropData);
+    return await this.categoriesService.cropImage(req.category, req.user.id, imageName, CropData);
   }
 
   @UseGuards(CategoryGuard)
   @Delete(':id/:imageName')
   async deleteImage(@Request() req, @Param('imageName') imageName: string) {
-    return await this.categoriesService.deleteImage(req.category, req.user, imageName);
+    return await this.categoriesService.deleteImage(req.category, req.user.id, imageName);
   }
 
   @UseGuards(CategoryGuard)
   @Post(':id/:imageName/accept')
   async accept(@Request() req, @Param('imageName') imageName: string) {
-    return await this.categoriesService.moveImageToAcceptedLocation(req.category, req.user, imageName);
+    return await this.categoriesService.moveImageToAcceptedLocation(req.category, req.user.id, imageName);
   }
 
   @UseGuards(CategoryGuard)
   @Post(':id/undo')
   async undo(@Request() req) {
-    return await this.categoriesService.undoAction(req.category, req.user);
+    return await this.categoriesService.undoAction(req.category, req.user.id);
   }
 }

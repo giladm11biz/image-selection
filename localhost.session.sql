@@ -1,1 +1,0 @@
-update diffpuzzles.users SET isBlocked = true WHERE true;

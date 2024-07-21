@@ -106,7 +106,8 @@ import messagesMixin from '@/mixins/messages.mixin';
 import axios from 'axios';
 import { mapGetters } from 'vuex';
 import { Cropper } from 'vue-advanced-cropper'
-const IMAGES_TO_PRELOAD = 20;
+import { v4 as uuidv4 } from 'uuid';
+const IMAGES_TO_PRELOAD = 10;
 
 
 export default {
@@ -382,7 +383,7 @@ export default {
     },
     async startLoadingImages(numberOfImages = 1) {
       for (let i = 0; i < numberOfImages; i++) {
-        let uuid = (new Date()).valueOf();
+        let uuid = uuidv4();
         this.imagesCache.push({
           uuid: uuid,
           isFinished: false,
@@ -390,6 +391,9 @@ export default {
           image: null,
         }
         )
+
+        // I do this so the images are loaded in the correct order
+        await new Promise(resolve => setTimeout(resolve, 0));
       }
 
       return await Promise.all(this.imagesCache.map(image => image.promise));
