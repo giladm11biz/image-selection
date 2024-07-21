@@ -45,29 +45,36 @@ export class CategoriesService {
     }
 
     async refreshRedisDataAndRemoveUserIfNeeded(category: Category, userIdToRemove: number = null) {
-        const activeUsersWithImagesSetKey = this.getActiveUsersWithImagesSetKey(category);
+        const lockKey = this.getLockKey(this.getFreeImagesListKey(category));
+        let lockObj = await this.redisService.lockKey(lockKey);
+
+        try {
+            const activeUsersWithImagesSetKey = this.getActiveUsersWithImagesSetKey(category);
         
-        if (userIdToRemove) {
-            const userCurrentImagesKey = this.getUserCurrentImagesKey(category, userIdToRemove);
-            await this.redisService.del(userCurrentImagesKey);
-            await this.redisService.srem(activeUsersWithImagesSetKey, [String(userIdToRemove)]);
-        }
-        
-        const freeImagesListKey = this.getFreeImagesListKey(category);
-        const usersWithImagesIds = await this.redisService.smembers(activeUsersWithImagesSetKey);
-        const getUsersImages = usersWithImagesIds.length == 0 ? [] : await this.getUsersImages(category, usersWithImagesIds)
-        const files = fs.readdirSync(category.sourcePath);
-
-        const freeFiles = _.difference(files, getUsersImages);
-
-        await this.redisService.del(freeImagesListKey);
-
-        if (freeFiles.length > 0) {
-            await this.redisService.rpush(freeImagesListKey, freeFiles);        
+            if (userIdToRemove) {
+                const userCurrentImagesKey = this.getUserCurrentImagesKey(category, userIdToRemove);
+                await this.redisService.del(userCurrentImagesKey);
+                await this.redisService.srem(activeUsersWithImagesSetKey, [String(userIdToRemove)]);
+            }
+            
+            const freeImagesListKey = this.getFreeImagesListKey(category);
+            const usersWithImagesIds = await this.redisService.smembers(activeUsersWithImagesSetKey);
+            const getUsersOccupiedImageNames = usersWithImagesIds.length == 0 ? [] : await this.getUsersOccupiedImageNames(category, usersWithImagesIds)
+            const files = fs.readdirSync(category.sourcePath);
+    
+            const freeFiles = _.difference(files, getUsersOccupiedImageNames);
+    
+            await this.redisService.del(freeImagesListKey);
+    
+            if (freeFiles.length > 0) {
+                await this.redisService.rpush(freeImagesListKey, freeFiles);        
+            }
+        } finally {
+            await this.redisService.unlockKey(lockObj);
         }
     }
 
-    async getUsersImages(category: Category, usersIds: String[]) {
+    async getUsersOccupiedImageNames(category: Category, usersIds: String[]) {
         let keys = usersIds.map(userId => this.getUserCurrentImagesKey(category, userId));
         let result = [];
 
@@ -83,6 +90,15 @@ export class CategoriesService {
 
     async getUserNextImageNameAndSaveToRedis(category: Category, userId: number) {
         const freeImagesListKey = this.getFreeImagesListKey(category);
+
+        const freeImagesListLockKey = this.getLockKey(this.getFreeImagesListKey(category));
+
+        console.log('wating for lock...');
+
+        await this.redisService.waitForLock(freeImagesListLockKey);
+
+        console.log('unlocked');
+
         const imageName = await this.redisService.lpop(freeImagesListKey);
         
         if (imageName) {
@@ -97,11 +113,16 @@ export class CategoriesService {
         return imageName;
     }
 
-    async getUserNextImage(category: Category, userId: number, resetUserImages: boolean = false) {
-        if (resetUserImages) {
-            await this.refreshRedisDataAndRemoveUserIfNeeded(category, resetUserImages ? userId : null);
+    async loadImagesIfNeededAndGetUserNextImage(category: Category, userId: number) {
+        let hasLoadedImages = await this.redisService.exists(this.getFreeImagesListKey(category));
+        if (!hasLoadedImages) {
+            await this.refreshRedisDataAndRemoveUserIfNeeded(category);
         }
+        
+        return await this.getUserNextImage(category, userId);
+    }
 
+    async getUserNextImage(category: Category, userId: number) {
         let userNextImageName = await this.getUserNextImageNameAndSaveToRedis(category, userId);
         //     .filter(file => /\.(jpg|jpeg|png|gif)$/.test(file))
 

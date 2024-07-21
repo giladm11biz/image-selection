@@ -17,7 +17,12 @@ export class CategoriesController {
   @UseGuards(CategoryGuard)
   @Get(':id/image/:type?')
   async getImage(@Request() req, @Response() response, @Param('type') type: string) {
-    let image = await this.categoriesService.getUserNextImage(req.category, req.user.id, type == 'first');
+    let image = null;
+    if (type == 'first') {
+      image = await this.categoriesService.loadImagesIfNeededAndGetUserNextImage(req.category, req.user.id);
+    } else {
+      image = await this.categoriesService.getUserNextImage(req.category, req.user.id);
+    }
 
     if (image) {
       return response.status(200).send(image)

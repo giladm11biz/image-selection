@@ -21,6 +21,11 @@ export class RedisService {
   async del(key: string): Promise<number> {
     return await this.client.del(key);
   }
+
+  
+  async exists(key: string): Promise<boolean> {
+    return await this.client.exists(key) == 1;
+  }
   
 
   async lockKey(key: string, lockTime: number = 5 * 60 * 1000): Promise<RedisLock> {
@@ -98,8 +103,25 @@ export class RedisService {
     return await this.client.scard(key);
   }
 
-
   async mget(keys: string[]): Promise<Array<string | null>> {
     return await this.client.mget(keys);
+  }
+
+  async waitForLock(key: string, tries: number = 200, checkEvery = 100): Promise<boolean> {
+    let isLocked = await this.exists(key);
+
+    if (!isLocked) {
+      return false;
+    }
+
+    for (let i = 0; i < tries; i++) {
+      await new Promise(resolve => setTimeout(resolve, checkEvery));
+      isLocked = await this.exists(key);
+      if (!isLocked) {
+        return true;
+      }
+    }
+
+    throw new Error('Timed out waiting for lock');
   }
 }
