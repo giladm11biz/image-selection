@@ -1,6 +1,8 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
-import { SubscribeMessage, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { WebsocketUserConnectionEvent } from './events/WebsocketUserConnection.event';
 
 @WebSocketGateway({
   cors: {
@@ -9,9 +11,9 @@ import { Server, Socket } from 'socket.io';
 })
 export class WebsocketGateway {
   @WebSocketServer()
-  server: Server;
+  server: Server = console.log('asd') == void 0 ? null : null;
 
-  constructor(private jwtService: JwtService) {}
+  constructor(private jwtService: JwtService, private eventEmitter: EventEmitter2) {}
 
 
   async handleConnection(client: Socket) {
@@ -53,13 +55,24 @@ export class WebsocketGateway {
       return;
     }
 
+    if (await this.isUserConnected(payload['id'])) {
+      client.disconnect(true);
+      return;
+    }
+
+    client.join(`user_${payload['id']}`);
     client['userId'] = payload['id'];
+    
 
     // Optionally, you can send an initial message to the client
     client.emit('connected', 'Successfully connected to WebSocket server');
   }
 
   handleDisconnect(client: Socket) {
+    if (client['userId']) {
+      this.eventEmitter.emit('websocket.user.disconnected', new WebsocketUserConnectionEvent(client['userId']));
+    }
+
     console.log(`Client disconnected: ${client.id}, userId: ${client['userId']}`);
   }
 
@@ -67,4 +80,14 @@ export class WebsocketGateway {
   // handleMessage(client: any, payload: any): string {
   //   return 'Hello world!';
   // }
+  
+  async getUsersInRoom(room: string): Promise<string[]> {
+    let usersInRoom = Array.from(await this.server.sockets.adapter.rooms.get(room) ?? []);
+    console.log(usersInRoom, 'usersInRoom');
+    return usersInRoom;
+  }
+
+  async isUserConnected(userId: number): Promise<boolean> {
+    return (await this.getUsersInRoom(`user_${userId}`)).length > 0;
+  }
 }

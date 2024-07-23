@@ -12,7 +12,7 @@ import { TelegramModule } from '../telegram/telegram.module';
     MailerModule.forRoot({
       transport: process.env.MAIL_TRANSPORT,
       defaults: {
-        from: '"DiffPuzzles" <' + process.env.SYSTEM_FROM_EMAIL + '>',
+        from: '"Image Approval Admin" <' + process.env.SYSTEM_FROM_EMAIL + '>',
       },
       template: {
         dir: join(__dirname, 'templates'),

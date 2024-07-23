@@ -15,6 +15,7 @@ import { IsNotProfanityConstraint } from './validators/IsNotProfanity.validator'
 import adminJsConfig from './adminJsConfig';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { WebsocketGateway } from './websocket/websocket.gateway';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 
 
@@ -36,6 +37,7 @@ import { WebsocketGateway } from './websocket/websocket.gateway';
     }),
     // AdminJS version 7 is ESM-only. In order to import it, you have to use dynamic imports.
     adminJsConfig(), 
+    EventEmitterModule.forRoot(),
     UsersModule,
     AuthModule,
     MailModule,
@@ -43,7 +45,7 @@ import { WebsocketGateway } from './websocket/websocket.gateway';
     CategoriesModule,
   ],
   controllers: [AppController],
-  providers: [AppService, IsUniqueConstraint, IsExistsConstraint, IsNotProfanityConstraint, WebsocketGateway],
+  providers: [AppService, IsUniqueConstraint, IsExistsConstraint, IsNotProfanityConstraint],
 })
 
 

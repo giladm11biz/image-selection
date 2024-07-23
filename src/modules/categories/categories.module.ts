@@ -4,9 +4,10 @@ import { CategoriesController } from './categories.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Category } from './category.entity';
 import { RedisModule } from '../redis/redis.module';
+import { WebsocketModule } from 'src/websocket/websocket.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Category]), RedisModule],
+  imports: [TypeOrmModule.forFeature([Category]), RedisModule, WebsocketModule],
   controllers: [CategoriesController],
   exports: [CategoriesService],
   providers: [CategoriesService],

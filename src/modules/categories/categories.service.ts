@@ -8,16 +8,21 @@ import * as path from 'path';
 import sharp from 'sharp'; 
 import { CropDataDto } from './dtos/CropData.dto';
 import _ from 'lodash';
+import { OnEvent } from '@nestjs/event-emitter';
+import { WebsocketService } from 'src/websocket/websocket.service';
+import { WebsocketUserConnectionEvent } from 'src/websocket/events/WebsocketUserConnection.event';
 
 const UNDO_ACTIONS_TIME_TO_SAVE = 8 * 60 * 60;
 const UNDO_ACTIONS_TO_SAVE = 20;
+const CLEAR_USER_IMAGES_AFTER = 20 * 1000;
 
 @Injectable()
 export class CategoriesService {
     constructor(
         @InjectRepository(Category)
         private categoriesRepository: Repository<Category>,
-        private redisService: RedisService
+        private redisService: RedisService,
+        private websocketService: WebsocketService
     ) {}
 
     async getCategoriesForUser(userId: number): Promise<any[]> {
@@ -43,6 +48,34 @@ export class CategoriesService {
     getUndoActionListKey(category: Category, userId: number) {
         return `undo_${category.id}_${userId}`;
     }
+
+    getUserLastCategoryKey(userId: number) {
+        return `user_${userId}_last_category`;
+    }
+
+    @OnEvent('websocket.user.disconnected')
+    async onUserDisconnected(event: WebsocketUserConnectionEvent) {
+        setTimeout(async () => {
+            if (await this.websocketService.isUserConnected(event.userId)) {
+                // User is connected again, no need to clean up
+                return;
+            }
+
+            let lastCategoryKey = this.getUserLastCategoryKey(event.userId);
+            let userLastCategory = await this.redisService.get(lastCategoryKey);
+    
+            if (userLastCategory) {
+                let category = await this.categoriesRepository.findOneBy({ id: Number(userLastCategory) });
+    
+                if (category) {
+                    console.log('refreshing data',category, event.userId);
+                    this.refreshRedisDataAndRemoveUserIfNeeded(category, event.userId);
+                }
+            }
+        }, CLEAR_USER_IMAGES_AFTER)
+
+    }
+
 
     async refreshRedisDataAndRemoveUserIfNeeded(category: Category, userIdToRemove: number = null) {
         const lockKey = this.getLockKey(this.getFreeImagesListKey(category));
