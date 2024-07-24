@@ -11,12 +11,26 @@ export class RedisService {
   ) {}
 
   async set(key: string, value: string, expirationSeconds: number = null) {
-    await this.client.set(key, value, 'EX', expirationSeconds);
+    if (expirationSeconds) {
+      await this.client.set(key, value, 'EX', expirationSeconds);
+    } else {
+      await this.client.set(key, value);
+    }
   }
 
   async get(key: string): Promise<string | null> {
     return await this.client.get(key);
   }
+
+  async del(key: string): Promise<number> {
+    return await this.client.del(key);
+  }
+
+  
+  async exists(key: string): Promise<boolean> {
+    return await this.client.exists(key) == 1;
+  }
+  
 
   async lockKey(key: string, lockTime: number = 5 * 60 * 1000): Promise<RedisLock> {
     return await this.lock.acquire([key], lockTime);
@@ -70,5 +84,48 @@ export class RedisService {
 
   async expire(key: string, expirationSeconds: number) {
     await this.client.expire(key, expirationSeconds);
+  }
+
+  
+  async sadd(key: string, members: string[]): Promise<number> {
+    return await this.client.sadd(key, members);
+  }
+
+  async srem(key: string, members: string[]): Promise<number> {
+    return await this.client.srem(key, members);
+  }
+
+  async sismember(key: string, member: string): Promise<number> {
+    return await this.client.sismember(key, member);
+  }
+
+  async smembers(key: string): Promise<string[]> {
+    return await this.client.smembers(key);
+  }
+
+  async scard(key: string): Promise<number> {
+    return await this.client.scard(key);
+  }
+
+  async mget(keys: string[]): Promise<Array<string | null>> {
+    return await this.client.mget(keys);
+  }
+
+  async waitForLock(key: string, tries: number = 200, checkEvery = 100): Promise<boolean> {
+    let isLocked = await this.exists(key);
+
+    if (!isLocked) {
+      return false;
+    }
+
+    for (let i = 0; i < tries; i++) {
+      await new Promise(resolve => setTimeout(resolve, checkEvery));
+      isLocked = await this.exists(key);
+      if (!isLocked) {
+        return true;
+      }
+    }
+
+    throw new Error('Timed out waiting for lock');
   }
 }

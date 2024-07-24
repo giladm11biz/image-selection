@@ -36,11 +36,15 @@
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.2.2",
     "@nestjs/core": "^10.0.0",
+    "@nestjs/event-emitter": "^2.0.4",
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/mapped-types": "*",
     "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/platform-socket.io": "^10.3.10",
     "@nestjs/serve-static": "^4.0.2",
     "@nestjs/typeorm": "^10.0.2",
+    "@nestjs/websockets": "^10.3.10",
+    "@socket.io/redis-adapter": "^8.3.0",
     "adminjs": "^7.8.1",
     "axios": "^1.6.8",
     "bcrypt": "^5.1.1",
@@ -60,7 +64,9 @@
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
     "sharp": "^0.33.4",
-    "typeorm": "^0.3.20"
+    "socket.io": "^4.7.5",
+    "typeorm": "^0.3.20",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",

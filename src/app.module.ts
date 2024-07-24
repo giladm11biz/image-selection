@@ -13,8 +13,8 @@ import { MailModule } from './modules/mail/mail.module';
 import { ProfanityModule } from './modules/profanity/profanity.module';
 import { IsNotProfanityConstraint } from './validators/IsNotProfanity.validator';
 import adminJsConfig from './adminJsConfig';
-import { APP_GUARD } from '@nestjs/core';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 
 
@@ -36,6 +36,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
     }),
     // AdminJS version 7 is ESM-only. In order to import it, you have to use dynamic imports.
     adminJsConfig(), 
+    EventEmitterModule.forRoot(),
     UsersModule,
     AuthModule,
     MailModule,

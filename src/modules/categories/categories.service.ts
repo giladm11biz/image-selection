@@ -5,120 +5,197 @@ import { Repository } from 'typeorm';
 import { RedisService } from '../redis/redis.service';
 import * as fs from 'fs';
 import * as path from 'path';
-import { User } from '../users/user.entity';
 import sharp from 'sharp'; 
 import { CropDataDto } from './dtos/CropData.dto';
 import _ from 'lodash';
+import { OnEvent } from '@nestjs/event-emitter';
+import { WebsocketService } from 'src/modules/websocket/websocket.service';
+import { WebsocketUserConnectionEvent } from 'src/modules/websocket/events/WebsocketUserConnection.event';
 
-const IMAGES_LIST_TIMEOUT = 24 * 60 * 60;
-const UNDO_ACTIONS_TIMEOUT = 8 * 60 * 60;
-const UNDO_ACTIONS_TO_SAVE = 10;
+const UNDO_ACTIONS_TIME_TO_SAVE = 8 * 60 * 60;
+const UNDO_ACTIONS_TO_SAVE = 20;
+const CLEAR_USER_IMAGES_AFTER = 10 * 1000;
 
 @Injectable()
 export class CategoriesService {
     constructor(
         @InjectRepository(Category)
         private categoriesRepository: Repository<Category>,
-        private redisService: RedisService
+        private redisService: RedisService,
+        private websocketService: WebsocketService
     ) {}
 
-    async getCategoriesForUser(user: User): Promise<any[]> {
+    async getCategoriesForUser(userId: number): Promise<any[]> {
         return await this.categoriesRepository.find();
     }
 
-    getImagesListKey(category: Category) {
-        return `category_${category.id}_images_by_user`;
+    getFreeImagesListKey(category: Category) {
+        return `category_${category.id}_free_images`;
+    }
+
+    getUserCurrentImagesKey(category: Category, userId: number | String) {
+        return `category_${category.id}_${userId}_images`;
+    }
+
+    getActiveUsersWithImagesSetKey(category: Category) {
+        return `categoty_${category.id}_users_images_set`;
     }
 
     getLockKey(key) {
         return key + "_lock";
     }
 
-    getUndoActionListKey(category: Category, user: User) {
-        return `undo_${category.id}_${user.id}`;
+    getUndoActionListKey(category: Category, userId: number) {
+        return `undo_${category.id}_${userId}`;
     }
 
-    async refreshRedisData(category: Category, userToRemove: User = null) {
-        const imagesKey = this.getImagesListKey(category);
-        const lockKey = this.getLockKey(imagesKey);
+    getUserLastCategoryKey(userId: number) {
+        return `user_${userId}_last_category`;
+    }
 
-        const files = fs.readdirSync(category.sourcePath);
+    @OnEvent('websocket.user.connected')
+    async onUserConnected(event: WebsocketUserConnectionEvent) {
+        let lastCategoryKey = this.getUserLastCategoryKey(event.userId);
+        let userLastCategory = await this.redisService.get(lastCategoryKey);
 
-        let lock = await this.redisService.lockKey(lockKey);
+        return {lastCategory: userLastCategory};
+    }
+
+    @OnEvent('websocket.user.disconnected')
+    async onUserDisconnected(event: WebsocketUserConnectionEvent) {
+        setTimeout(async () => {
+            let isUserConnected = await this.websocketService.isUserConnected(event.userId);
+            console.log('isUserConnected', isUserConnected);
+
+            if (isUserConnected) {
+                // User is connected again, no need to clean up
+                return;
+            }
+
+            let lastCategoryKey = this.getUserLastCategoryKey(event.userId);
+            let userLastCategory = await this.redisService.get(lastCategoryKey);
+    
+            if (userLastCategory) {
+                let category = await this.categoriesRepository.findOneBy({ id: Number(userLastCategory) });
+    
+                if (category) {
+                    this.refreshRedisDataAndRemoveUserIfNeeded(category, event.userId);
+                }
+            }
+        }, CLEAR_USER_IMAGES_AFTER);
+    }
+
+
+    async refreshRedisDataAndRemoveUserIfNeeded(category: Category, userIdToRemove: number = null) {
+        const freeImagesListKey = this.getFreeImagesListKey(category);
+        const lockKey = this.getLockKey(freeImagesListKey);
+        let lockObj = await this.redisService.lockKey(lockKey);
+
+        try {
+            const activeUsersWithImagesSetKey = this.getActiveUsersWithImagesSetKey(category);
         
-        try {
-
-            let redisData = await this.redisService.get(imagesKey);
-
-            let imagesData = redisData && redisData != '' ? JSON.parse(redisData) : {};
-
-            if (userToRemove) {
-                delete imagesData[userToRemove.id];
+            if (userIdToRemove) {
+                const userCurrentImagesKey = this.getUserCurrentImagesKey(category, userIdToRemove);
+                await this.redisService.del(userCurrentImagesKey);
+                await this.redisService.srem(activeUsersWithImagesSetKey, [String(userIdToRemove)]);
             }
-
-            let usedImages = {...imagesData};
-            delete usedImages[-1];
-
-            usedImages = _.flatten(Object.values(usedImages));
-
-            imagesData[-1] = _.difference(files, usedImages);
-
-
-            this.redisService.set(imagesKey, JSON.stringify(imagesData), IMAGES_LIST_TIMEOUT);
             
+            const usersWithImagesIds = await this.redisService.smembers(activeUsersWithImagesSetKey);
+            const getUsersOccupiedImageNames = usersWithImagesIds.length == 0 ? [] : await this.getUsersOccupiedImageNames(category, usersWithImagesIds)
+            const files = fs.readdirSync(category.sourcePath);
+    
+            const freeFiles = _.difference(files, getUsersOccupiedImageNames);
+    
+            await this.redisService.del(freeImagesListKey);
+    
+            if (freeFiles.length > 0) {
+                await this.redisService.rpush(freeImagesListKey, freeFiles);        
+            }
+        } catch (err) {
+            throw err;
         } finally {
-            this.redisService.unlockKey(lock);
+            await this.redisService.unlockKey(lockObj);
         }
-
     }
 
-    async getUserNextImageNameAndSaveToRedis(category: Category, user: User) {
+    async getUsersOccupiedImageNames(category: Category, usersIds: String[]) {
+        let keys = usersIds.map(userId => this.getUserCurrentImagesKey(category, userId));
+        let result = [];
 
-        const imagesKey = this.getImagesListKey(category);
-        const lockKey = this.getLockKey(imagesKey);
+        const resultPromises = keys.map(async key => {
+            const value = await this.redisService.lrange(key, 0, -1);
+            return value;
+        });
 
-        let time = new Date().valueOf();
-        console.log('before lock', time);
+        result = _.flatten(await Promise.all(resultPromises));
 
+        return result;
+    }
 
-        let lock = await this.redisService.lockKey(lockKey);
+    async getUserNextImageNameAndSaveToRedis(category: Category, userId: number) {
+        const freeImagesListKey = this.getFreeImagesListKey(category);
 
-        let imageName = null;
+        const freeImagesListLockKey = this.getLockKey(this.getFreeImagesListKey(category));
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log('wating for lock...');
 
-        try {
-            let redisData = await this.redisService.get(imagesKey);
+        await this.redisService.waitForLock(freeImagesListLockKey);
 
-            let imagesData = redisData ? JSON.parse(redisData) : {};
-    
-            if (!imagesData[user.id]) {
-                imagesData[user.id] = [];
-            }
-    
-    
-            if (imagesData[-1] && imagesData[-1].length > 0) {
-                imageName = imagesData[-1].shift();
-                imagesData[user.id].push(imageName);
-            }
-    
-            this.redisService.set(imagesKey, JSON.stringify(imagesData), IMAGES_LIST_TIMEOUT);
-    
-        } finally {
-            await this.redisService.unlockKey(lock);
-            console.log('after lock', time);
+        console.log('unlocked');
+
+        const imageName = await this.redisService.lpop(freeImagesListKey);
+        
+        if (imageName) {
+            const activeUsersWithImagesSetKey = this.getActiveUsersWithImagesSetKey(category);
+            const userCurrentImagesKey = this.getUserCurrentImagesKey(category, userId);
+
+            await this.redisService.sadd(activeUsersWithImagesSetKey, [String(userId)]);
+            await this.redisService.rpush(userCurrentImagesKey, imageName);
         }
-
 
         return imageName;
     }
 
-    async getUserNextImage(category: Category, user: User, resetUserImages: boolean = false) {
-        if (resetUserImages) {
-            this.refreshRedisData(category, resetUserImages ? user : null);
+    async loadImagesIfNeededAndGetUserNextImage(category: Category, userId: number) {
+        let userLastCategoryKey = this.getUserLastCategoryKey(userId);
+        let lockKey = this.getLockKey(`user_${userId}_${category.id}_first_load`);
+
+        // Better be safe than sorry
+        let userLock = await this.redisService.lockKey(lockKey);
+
+        try {
+            const freeImagesListKey = this.getFreeImagesListKey(category);
+
+            let isCategoryImagesLoaded = await this.redisService.exists(freeImagesListKey);
+            let isUserHaveImages = await this.redisService.sismember(this.getActiveUsersWithImagesSetKey(category), String(userId));
+
+            if(!isCategoryImagesLoaded || isUserHaveImages) {
+                await this.refreshRedisDataAndRemoveUserIfNeeded(category, userId);
+            }
+
+            let userLastCategory = await this.redisService.get(userLastCategoryKey);
+            
+            if (userLastCategory) {
+                // free last category images, no need to wait for it now
+                setTimeout(async () => {
+                    let lastCategory = await this.categoriesRepository.findOneBy({ id: Number(userLastCategory) });
+                    await this.refreshRedisDataAndRemoveUserIfNeeded(lastCategory, userId);
+                }, 0);
+            }
+    
+            await this.redisService.set(userLastCategoryKey, String(category.id));
+            
+            return await this.getUserNextImage(category, userId);
+        } catch (err) {
+            throw err;
+        } finally {
+            await this.redisService.unlockKey(userLock);
         }
 
-        let userNextImageName = await this.getUserNextImageNameAndSaveToRedis(category, user);
+    }
+
+    async getUserNextImage(category: Category, userId: number) {
+        let userNextImageName = await this.getUserNextImageNameAndSaveToRedis(category, userId);
         //     .filter(file => /\.(jpg|jpeg|png|gif)$/.test(file))
 
         if (!userNextImageName) {
@@ -154,25 +231,25 @@ export class CategoriesService {
         };
     }
 
-    async addUndoAction(category: Category, user: User, actionData: any) {
-        let key = this.getUndoActionListKey(category, user);
+    async addUndoAction(category: Category, userId: number, actionData: any) {
+        let key = this.getUndoActionListKey(category, userId);
         
-        await this.redisService.lpush(key, JSON.stringify(actionData), UNDO_ACTIONS_TIMEOUT);
+        await this.redisService.lpush(key, JSON.stringify(actionData), UNDO_ACTIONS_TIME_TO_SAVE);
         await this.redisService.ltrim(key, 0, UNDO_ACTIONS_TO_SAVE - 1);
     }
 
-    async getLastUndoAction(category: Category, user: User) {
-        let key = this.getUndoActionListKey(category, user);
+    async getLastUndoAction(category: Category, userId: number) {
+        let key = this.getUndoActionListKey(category, userId);
         let undoAction = await this.redisService.lindex(key, 0);
         return undoAction ? JSON.parse(undoAction) : null;
     }
 
-    async removeLastUndoAction(category: Category, user: User) {
-        let key = this.getUndoActionListKey(category, user);
+    async removeLastUndoAction(category: Category, userId: number) {
+        let key = this.getUndoActionListKey(category, userId);
         await this.redisService.lpop(key);
     }
 
-    async cropImage(category: Category, user: User, imageName: string, cropData: CropDataDto): Promise<any> {
+    async cropImage(category: Category, userId: number, imageName: string, cropData: CropDataDto): Promise<any> {
         const imagePath = path.join(category.sourcePath, imageName);
         const image = await this.getImageByName(category, imageName);
         if (!image) {
@@ -180,9 +257,6 @@ export class CategoriesService {
         }
     
         const outputPath = imagePath;
-
-
-
         sharp.cache(false);
         let file = sharp(imagePath);
 
@@ -201,7 +275,7 @@ export class CategoriesService {
         await fs.renameSync(outputPath + '_temp', imagePath);
             
 
-        await this.addUndoAction(category, user, { action: 'crop', image });
+        await this.addUndoAction(category, userId, { action: 'crop', image });
 
         return await this.getImageByName(category, imageName);
     }
@@ -216,7 +290,7 @@ export class CategoriesService {
         return image;
     }
 
-    async deleteImage(category: Category, user: User, imageName: string): Promise<void> {
+    async deleteImage(category: Category, userId: number, imageName: string): Promise<void> {
         const image = await this.getImageByName(category, imageName);
         const imagePath = path.join(category.sourcePath, imageName);
 
@@ -226,7 +300,7 @@ export class CategoriesService {
     
         fs.unlinkSync(imagePath);
 
-        await this.addUndoAction(category, user, { action: 'delete', image });
+        await this.addUndoAction(category, userId, { action: 'delete', image });
     }
 
     async undoDeleteImage(category: Category, image) {
@@ -238,14 +312,14 @@ export class CategoriesService {
         return image;
     }
 
-    async moveImageToAcceptedLocation(category: Category, user: User, imageName: string): Promise<void> {
+    async moveImageToAcceptedLocation(category: Category, userId: number, imageName: string): Promise<void> {
         let imagePath = path.join(category.sourcePath, imageName);
 
         const destinationPath = path.join(category.destinationPath, imageName);
 
         fs.renameSync(imagePath, destinationPath);
 
-        await this.addUndoAction(category, user, { action: 'move', image: imageName });    
+        await this.addUndoAction(category, userId, { action: 'move', image: imageName });    
     }
 
     async undoMoveImageToAcceptedLocation(category: Category, imageName) {
@@ -257,19 +331,19 @@ export class CategoriesService {
         return this.getImageByName(category, imageName);
     }
 
-    async undoAction(category: Category, user: User): Promise<void> {
+    async undoAction(category: Category, userId: number): Promise<void> {
         const actionFunctionMap = {
           'crop': this.undoCropImage.bind(this),
           'delete': this.undoDeleteImage.bind(this),
           'move': this.undoMoveImageToAcceptedLocation.bind(this)
         };
 
-        const lockKey = this.getLockKey(this.getUndoActionListKey(category, user));
+        const lockKey = this.getLockKey(this.getUndoActionListKey(category, userId));
 
         let lockObj = await this.redisService.lockKey(lockKey);
 
         try {
-            const lastAction = await this.getLastUndoAction(category, user);
+            const lastAction = await this.getLastUndoAction(category, userId);
 
             if (!lastAction) {
                 return null;
@@ -281,9 +355,11 @@ export class CategoriesService {
     
             let result = await actionFunctionMap[lastAction.action](category, lastAction.image);
     
-            await this.removeLastUndoAction(category, user);
+            await this.removeLastUndoAction(category, userId);
         
-            return result;    
+            return result;
+        } catch (err) {
+            throw err;    
         } finally {
             await this.redisService.unlockKey(lockObj);
         }

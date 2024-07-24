@@ -27,8 +27,6 @@ import Header from './components/infra/Header.vue';
 import { mapGetters, mapActions, mapMutations } from 'vuex';
 import messagesMixin from '@/mixins/messages.mixin';
 import UserService from '@/services/UserService';
-import CategoriesService from '@/services/CategoriesService';
-
 
 export default {
   name: 'App',
@@ -119,7 +117,7 @@ export default {
     this.showMessageIfNeeded();
     this.loginAndSaveUserIfHasToken().then(isLoggedIn => {
       if (isLoggedIn) {
-        CategoriesService.loadCategories();
+        UserService.afterLoginActions(UserService.getTokenFromLocalStorage());
       } else {
         this.loadGoogleAuth();
       }

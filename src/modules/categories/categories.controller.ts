@@ -3,21 +3,27 @@ import { CategoriesService } from './categories.service';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CategoryGuard } from './guards/category.guard';
 import { CropDataDto } from './dtos/CropData.dto';
+import { SocketConnectedGuard } from '../websocket/guards/socketConnected.guard';
 
 @Controller('categories')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, SocketConnectedGuard)
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
   @Get()
   async findAll(@Request() req) {
-    return (await this.categoriesService.getCategoriesForUser(req.user)).map(category => category.getClientData());
+    return (await this.categoriesService.getCategoriesForUser(req.user.id)).map(category => category.getClientData());
   }
 
   @UseGuards(CategoryGuard)
   @Get(':id/image/:type?')
   async getImage(@Request() req, @Response() response, @Param('type') type: string) {
-    let image = await this.categoriesService.getUserNextImage(req.category, req.user, type == 'first');
+    let image = null;
+    if (type == 'first') {
+      image = await this.categoriesService.loadImagesIfNeededAndGetUserNextImage(req.category, req.user.id);
+    } else {
+      image = await this.categoriesService.getUserNextImage(req.category, req.user.id);
+    }
 
     if (image) {
       return response.status(200).send(image)
@@ -41,24 +47,24 @@ export class CategoriesController {
   @UseGuards(CategoryGuard)
   @Post(':id/:imageName/crop')
   async crop(@Request() req, @Param('imageName') imageName: string, @Body() CropData: CropDataDto) {
-    return await this.categoriesService.cropImage(req.category, req.user, imageName, CropData);
+    return await this.categoriesService.cropImage(req.category, req.user.id, imageName, CropData);
   }
 
   @UseGuards(CategoryGuard)
   @Delete(':id/:imageName')
   async deleteImage(@Request() req, @Param('imageName') imageName: string) {
-    return await this.categoriesService.deleteImage(req.category, req.user, imageName);
+    return await this.categoriesService.deleteImage(req.category, req.user.id, imageName);
   }
 
   @UseGuards(CategoryGuard)
   @Post(':id/:imageName/accept')
   async accept(@Request() req, @Param('imageName') imageName: string) {
-    return await this.categoriesService.moveImageToAcceptedLocation(req.category, req.user, imageName);
+    return await this.categoriesService.moveImageToAcceptedLocation(req.category, req.user.id, imageName);
   }
 
   @UseGuards(CategoryGuard)
   @Post(':id/undo')
   async undo(@Request() req) {
-    return await this.categoriesService.undoAction(req.category, req.user);
+    return await this.categoriesService.undoAction(req.category, req.user.id);
   }
 }
