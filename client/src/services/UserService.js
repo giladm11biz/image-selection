@@ -40,9 +40,8 @@ export default class UserService {
     }
 
     static async afterLoginActions(token) {
-        await CategortiesService.loadCategories();
-        await SocketService.startSocket(token);
-
+        SocketService.startSocket(token);
+        CategortiesService.loadCategories();
     }
 
 

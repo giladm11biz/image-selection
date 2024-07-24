@@ -3,9 +3,10 @@ import { CategoriesService } from './categories.service';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CategoryGuard } from './guards/category.guard';
 import { CropDataDto } from './dtos/CropData.dto';
+import { SocketConnectedGuard } from '../websocket/guards/socketConnected.guard';
 
 @Controller('categories')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, SocketConnectedGuard)
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 

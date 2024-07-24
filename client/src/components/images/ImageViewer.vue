@@ -107,6 +107,7 @@ import axios from 'axios';
 import { mapGetters } from 'vuex';
 import { Cropper } from 'vue-advanced-cropper'
 import { v4 as uuidv4 } from 'uuid';
+import SocketService from '@/services/SocketService';
 const IMAGES_TO_PRELOAD = 10;
 
 
@@ -126,7 +127,7 @@ export default {
     };
   },
   computed: {
-    ...mapGetters(['isAuthenticated', 'isAuthenticating', 'isFullScreen', 'isShowLoadingMessage']),
+    ...mapGetters(['isAuthenticated', 'isAuthenticating', 'isFullScreen', 'isShowLoadingMessage', 'isSocketConnected', 'socketConnectionData']),
     categoryId() {
       return this.$route.params.id;
     },
@@ -340,11 +341,17 @@ export default {
         return;
       }
 
+      if (!this.isSocketConnected) {
+        this.showLoadingMessage("Connecting to server");
+        return;
+      }
+
       await this.$nextTick();
       this.showLoadingMessage("Loading images");
       this.imagesCache = [];
       
       try {
+        await SocketService.waitForSocketConnection();
         await this.startLoadingImages(1);
         this.hideLoadingMessage();
         await this.setCurrentImageIndex(0);
@@ -362,6 +369,8 @@ export default {
         if (isFirstImage) {
           url += '/first';
         }
+
+        // await SocketService.waitForSocketConnection();
         const response = await axios.get(url);
 
         if (response.status == 204 || response.data == null || response.data.url == '') {
@@ -533,8 +542,16 @@ export default {
     categoryId() {
       this.resetAndLoadFirstImage();
     },
-    isAuthenticated() {
-      this.resetAndLoadFirstImage();
+    isSocketConnected(isConnected) {
+      if (!isConnected) {
+        this.showLoadingMessage("Connecting to server");
+      } else {
+        if (this.socketConnectionData.lastCategory == this.categoryId && this.imagesCache.length > 0) {
+          this.hideLoadingMessage();
+        } else {
+          this.resetAndLoadFirstImage();
+        }
+      }
     },
     isAuthenticating(newVal) {
       if(!newVal) {

@@ -15,6 +15,7 @@ export default createStore({
       isFullScreen: false,
       socket: null,
       isSocketConnected: false,
+      socketConnectionData: null,
     }
   },
   getters: {
@@ -30,6 +31,7 @@ export default createStore({
     isFullScreen: state => state.isFullScreen,
     socket: state => state.socket,
     isSocketConnected: state => state.isSocketConnected,
+    socketConnectionData: state => state.socketConnectionData,
   },
   mutations: {
     setAuthenticated(state, value) {
@@ -72,7 +74,10 @@ export default createStore({
     },
     setIsSocketConnected(state, value) {
       state.isSocketConnected = value;
-    }
+    },
+    setSocketConnectionData(state, value) {
+      state.socketConnectionData = value;
+    },
   },
   actions: {
     setAuthenticated({ commit }, value) {
@@ -91,12 +96,21 @@ export default createStore({
       dispatch('addMessage', {
         message,
         type: 'success',
+        duration: 10000,
       });
     },
     addErrorMessage({ dispatch }, message) {
       dispatch('addMessage', {
         message,
         type: 'error',
+      });
+    },
+    addPermenentErrorMessage({ dispatch }, message) {
+      dispatch('addMessage', {
+        message,
+        type: 'error',
+        duration: 1000 * 60 * 60 * 100,
+        showClose: false,
       });
     },
     addInfoMessage({ dispatch }, message) {
@@ -112,7 +126,7 @@ export default createStore({
       });
     },
     addMessage(actions, message) {
-      ElMessage({...message, duration: 10000, showClose: true});
+      ElMessage({duration: 10000, showClose: true, ...message});
     },
     async loginAndSaveUserIfHasToken({ commit }) {
       let isLoggedIn = false;

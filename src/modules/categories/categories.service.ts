@@ -9,12 +9,12 @@ import sharp from 'sharp';
 import { CropDataDto } from './dtos/CropData.dto';
 import _ from 'lodash';
 import { OnEvent } from '@nestjs/event-emitter';
-import { WebsocketService } from 'src/websocket/websocket.service';
-import { WebsocketUserConnectionEvent } from 'src/websocket/events/WebsocketUserConnection.event';
+import { WebsocketService } from 'src/modules/websocket/websocket.service';
+import { WebsocketUserConnectionEvent } from 'src/modules/websocket/events/WebsocketUserConnection.event';
 
 const UNDO_ACTIONS_TIME_TO_SAVE = 8 * 60 * 60;
 const UNDO_ACTIONS_TO_SAVE = 20;
-const CLEAR_USER_IMAGES_AFTER = 20 * 1000;
+const CLEAR_USER_IMAGES_AFTER = 10 * 1000;
 
 @Injectable()
 export class CategoriesService {
@@ -53,10 +53,21 @@ export class CategoriesService {
         return `user_${userId}_last_category`;
     }
 
+    @OnEvent('websocket.user.connected')
+    async onUserConnected(event: WebsocketUserConnectionEvent) {
+        let lastCategoryKey = this.getUserLastCategoryKey(event.userId);
+        let userLastCategory = await this.redisService.get(lastCategoryKey);
+
+        return {lastCategory: userLastCategory};
+    }
+
     @OnEvent('websocket.user.disconnected')
     async onUserDisconnected(event: WebsocketUserConnectionEvent) {
         setTimeout(async () => {
-            if (await this.websocketService.isUserConnected(event.userId)) {
+            let isUserConnected = await this.websocketService.isUserConnected(event.userId);
+            console.log('isUserConnected', isUserConnected);
+
+            if (isUserConnected) {
                 // User is connected again, no need to clean up
                 return;
             }
@@ -68,17 +79,16 @@ export class CategoriesService {
                 let category = await this.categoriesRepository.findOneBy({ id: Number(userLastCategory) });
     
                 if (category) {
-                    console.log('refreshing data',category, event.userId);
                     this.refreshRedisDataAndRemoveUserIfNeeded(category, event.userId);
                 }
             }
-        }, CLEAR_USER_IMAGES_AFTER)
-
+        }, CLEAR_USER_IMAGES_AFTER);
     }
 
 
     async refreshRedisDataAndRemoveUserIfNeeded(category: Category, userIdToRemove: number = null) {
-        const lockKey = this.getLockKey(this.getFreeImagesListKey(category));
+        const freeImagesListKey = this.getFreeImagesListKey(category);
+        const lockKey = this.getLockKey(freeImagesListKey);
         let lockObj = await this.redisService.lockKey(lockKey);
 
         try {
@@ -90,7 +100,6 @@ export class CategoriesService {
                 await this.redisService.srem(activeUsersWithImagesSetKey, [String(userIdToRemove)]);
             }
             
-            const freeImagesListKey = this.getFreeImagesListKey(category);
             const usersWithImagesIds = await this.redisService.smembers(activeUsersWithImagesSetKey);
             const getUsersOccupiedImageNames = usersWithImagesIds.length == 0 ? [] : await this.getUsersOccupiedImageNames(category, usersWithImagesIds)
             const files = fs.readdirSync(category.sourcePath);
@@ -102,6 +111,8 @@ export class CategoriesService {
             if (freeFiles.length > 0) {
                 await this.redisService.rpush(freeImagesListKey, freeFiles);        
             }
+        } catch (err) {
+            throw err;
         } finally {
             await this.redisService.unlockKey(lockObj);
         }
@@ -142,17 +153,45 @@ export class CategoriesService {
             await this.redisService.rpush(userCurrentImagesKey, imageName);
         }
 
-
         return imageName;
     }
 
     async loadImagesIfNeededAndGetUserNextImage(category: Category, userId: number) {
-        let hasLoadedImages = await this.redisService.exists(this.getFreeImagesListKey(category));
-        if (!hasLoadedImages) {
-            await this.refreshRedisDataAndRemoveUserIfNeeded(category);
+        let userLastCategoryKey = this.getUserLastCategoryKey(userId);
+        let lockKey = this.getLockKey(`user_${userId}_${category.id}_first_load`);
+
+        // Better be safe than sorry
+        let userLock = await this.redisService.lockKey(lockKey);
+
+        try {
+            const freeImagesListKey = this.getFreeImagesListKey(category);
+
+            let isCategoryImagesLoaded = await this.redisService.exists(freeImagesListKey);
+            let isUserHaveImages = await this.redisService.sismember(this.getActiveUsersWithImagesSetKey(category), String(userId));
+
+            if(!isCategoryImagesLoaded || isUserHaveImages) {
+                await this.refreshRedisDataAndRemoveUserIfNeeded(category, userId);
+            }
+
+            let userLastCategory = await this.redisService.get(userLastCategoryKey);
+            
+            if (userLastCategory) {
+                // free last category images, no need to wait for it now
+                setTimeout(async () => {
+                    let lastCategory = await this.categoriesRepository.findOneBy({ id: Number(userLastCategory) });
+                    await this.refreshRedisDataAndRemoveUserIfNeeded(lastCategory, userId);
+                }, 0);
+            }
+    
+            await this.redisService.set(userLastCategoryKey, String(category.id));
+            
+            return await this.getUserNextImage(category, userId);
+        } catch (err) {
+            throw err;
+        } finally {
+            await this.redisService.unlockKey(userLock);
         }
-        
-        return await this.getUserNextImage(category, userId);
+
     }
 
     async getUserNextImage(category: Category, userId: number) {
@@ -218,9 +257,6 @@ export class CategoriesService {
         }
     
         const outputPath = imagePath;
-
-
-
         sharp.cache(false);
         let file = sharp(imagePath);
 
@@ -321,7 +357,9 @@ export class CategoriesService {
     
             await this.removeLastUndoAction(category, userId);
         
-            return result;    
+            return result;
+        } catch (err) {
+            throw err;    
         } finally {
             await this.redisService.unlockKey(lockObj);
         }

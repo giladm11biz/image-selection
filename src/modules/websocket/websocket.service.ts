@@ -12,4 +12,8 @@ export class WebsocketService {
     async isUserConnected(userId: number): Promise<boolean> {
         return await this.websocketGateway.isUserConnected(userId);
     }
+
+    async checkUserSocketId(userId: number, uuid: string): Promise<boolean> {
+        return await this.websocketGateway.checkUserSocketId(userId, uuid);
+    }
 }
