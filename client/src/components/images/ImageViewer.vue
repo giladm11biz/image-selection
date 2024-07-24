@@ -370,7 +370,6 @@ export default {
           url += '/first';
         }
 
-        // await SocketService.waitForSocketConnection();
         const response = await axios.get(url);
 
         if (response.status == 204 || response.data == null || response.data.url == '') {

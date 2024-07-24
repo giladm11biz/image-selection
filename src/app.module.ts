@@ -14,7 +14,6 @@ import { ProfanityModule } from './modules/profanity/profanity.module';
 import { IsNotProfanityConstraint } from './validators/IsNotProfanity.validator';
 import adminJsConfig from './adminJsConfig';
 import { CategoriesModule } from './modules/categories/categories.module';
-import { WebsocketGateway } from './modules/websocket/websocket.gateway';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 
 
