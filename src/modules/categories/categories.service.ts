@@ -91,6 +91,8 @@ export class CategoriesService {
         const lockKey = this.getLockKey(freeImagesListKey);
         let lockObj = await this.redisService.lockKey(lockKey);
 
+        console.log('refreshing category', category.id, userIdToRemove);
+
         try {
             const activeUsersWithImagesSetKey = this.getActiveUsersWithImagesSetKey(category);
         
@@ -132,10 +134,10 @@ export class CategoriesService {
         return result;
     }
 
-    async getUserNextImageNameAndSaveToRedis(category: Category, userId: number) {
+    async getUserNextImageNameAndSaveToRedis(category: Category, userId: number) {      
         const freeImagesListKey = this.getFreeImagesListKey(category);
 
-        const freeImagesListLockKey = this.getLockKey(this.getFreeImagesListKey(category));
+        const freeImagesListLockKey = this.getLockKey(freeImagesListKey);
 
         console.log('wating for lock...');
 
@@ -175,7 +177,7 @@ export class CategoriesService {
 
             let userLastCategory = await this.redisService.get(userLastCategoryKey);
             
-            if (userLastCategory) {
+            if (userLastCategory && userLastCategory != String(category.id)) {
                 // free last category images, no need to wait for it now
                 setTimeout(async () => {
                     let lastCategory = await this.categoriesRepository.findOneBy({ id: Number(userLastCategory) });

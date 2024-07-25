@@ -15,7 +15,7 @@
 
     </div>
     <div class="image-container" ref="imageContainer">
-      <div class="cropper-holder" v-if="currentImage">
+      <div class="cropper-holder" :class="{'not-cropping': !cropMode}" v-if="currentImage">
         <cropper
         class="cropper"
         ref="cropper"
@@ -564,7 +564,7 @@ export default {
 };
 </script>
 
-<style scoped>
+<style>
 .image-viewer {
   display: flex;
   flex-direction: column;
@@ -594,8 +594,8 @@ export default {
 .status-bar {
   display: flex;
   justify-content: space-between;
-  border-top: 2px solid white;
-  padding: 0px 10px;
+  border-top: 2px dashed var(--border-color);
+  padding: 10px;
 }
 
 .status-bar > div {
@@ -634,8 +634,49 @@ export default {
   padding: 5px;
 }
 
-.controls {
-  border-bottom: 2px solid white;
-  padding: 5px;
+.image-viewer .controls {
+  border-bottom: 2px dashed var(--border-color);
+  padding: 10px 2rem;
+  display: flex;
+  height: 40px;
+}
+
+.image-viewer .controls button {
+  cursor: pointer;
+  transition: background-color 0.3s, box-shadow 0.3s;
+  flex: 1;
+  border: none;
+  font-weight: bold;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); /* Default shadow */
+  border-radius: 10px;
+
+}
+
+.image-viewer .controls button:hover {
+  opacity: 0.8;
+}
+
+.image-viewer .controls button:nth-child(1) { background-color: #607D8B; color: #fff; } /* Previous */
+.image-viewer .controls button:nth-child(2) { background-color: #2196F3; color: #fff; } /* Next */
+.image-viewer .controls button:nth-child(3) { background-color: #FFC107; color: #000; } /* Zoom In */
+.image-viewer .controls button:nth-child(4) { background-color: #FF5722; color: #fff; } /* Zoom Out */
+.image-viewer .controls button:nth-child(5) { background-color: #00BCD4; color: #fff; } /* Reset Zoom */
+.image-viewer .controls button:nth-child(6) { background-color: #F44336; color: #fff; } /* Delete */
+.image-viewer .controls button:nth-child(7) { background-color: #4CAF50; color: #fff; } /* Accept */
+.image-viewer .controls button:nth-child(8) { background-color: #9C27B0; color: #fff; } /* Undo */
+.image-viewer .controls button:nth-child(9) { background-color: #3F51B5; color: #fff; } /* Crop/Apply Crop */
+.image-viewer .controls button:nth-child(10) { background-color: #E91E63; color: #fff; } /* Cancel Crop */
+
+
+
+
+.image-viewer .controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+.not-cropping .vue-simple-line {
+  display: none;
 }
 </style>

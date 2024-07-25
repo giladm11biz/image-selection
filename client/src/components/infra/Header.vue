@@ -146,7 +146,7 @@ export default {
     min-width: 50%;
     height: 100vh;
     height: 100dvh;
-    background-color: black;
+    background-color: var(--background-color);
     padding: 0 10px;
     display: flex;
     flex-direction: column;

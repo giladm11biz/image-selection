@@ -98,7 +98,7 @@ export default {
       window.google.accounts.id.disableAutoSelect()
 
       window.google.accounts.id.renderButton(this.$refs.googleLogin, {
-        theme: 'filled_blue',
+        theme: 'filled_black',
         text: 'continue_with',
 
       });

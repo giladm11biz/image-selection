@@ -175,7 +175,7 @@ export default {
 }
 
 .container {
-  background-color: rgba(0, 0, 0, 1);
+  background-color: var(--background-color);
   border-radius: 20px;
   padding: 20px;
   display: inline-block;
@@ -201,7 +201,7 @@ export default {
   padding: 0;
   border-radius: 0;
   width: 100%;
-  border-top: 2px solid white;
+  border-top: 2px dashed var(--border-color);
   display: flex;
 }
 
